@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CitiBike Stations</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="https://d3js.org/d3-path.v2.min.js"></script>
+    <script src="https://d3js.org/d3-shape.v2.min.js"></script>
+    <script src="https://d3js.org/topojson.v1.min.js"></script>
+    <script src="https://d3js.org/d3-array.v2.min.js"></script>
+    <script src="https://d3js.org/d3-geo.v2.min.js"></script>
+    <script src="https://d3js.org/d3-geo-projection.v3.min.js"></script>
+    <script src="https://unpkg.com/react/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone/babel.js"></script>
+    <link rel="stylesheet" href="styles.css" > 
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+    const csvUrl = 'https://gist.githubusercontent.com/hogwild/3b9aa737bde61dcb4dfa60cde8046e04/raw/citibike2020.csv';
+    const mapUrl = "https://gist.githubusercontent.com/hogwild/6784f0d85e8837b9926c184c65ca8ed0/raw/2040d6883cf822817e34b5bda885348ec6214572/jerseyCity_geojson.json";
+    function useData(csvPath){
+        const [dataAll, setData] = React.useState(null);
+        React.useEffect(() => {
+            d3.csv(csvPath).then(data => {
+                data.forEach(d => {
+                    d.start = +d.start;
+                    d.tripdurationS = +d.tripdurationS;
+                    d.end = +d.end;
+                    d.tripdurationE = +d.tripdurationE;
+                    d.latitude = +d.latitude;
+                    d.longitude = +d.longitude;
+                    d.popularity = d.start + d.end; //derive a new attribute: popularity
+                });
+                setData(data);
+            });
+        }, []);
+        return dataAll;
+    }
+    function useMap(jsonPath) {
+        const [data, setData] = React.useState(null);
+        React.useEffect(() => {
+            d3.json(jsonPath).then(geoJsonData => {
+                setData(geoJsonData);
+            })
+        }, []);
+        return data;
+    }
+    function SymbolMap(props) {
+        const {x, y, map, data, height, width, selectedStation, setSelectedStation} = props;
+        //const {map, data} = props;
+        const projection = d3.geoMercator().fitSize([width, height], map);
+        const path = d3.geoPath(projection);
+        const radius = d3.scaleLinear().range([2, 20])
+            .domain([d3.min(data, d => d.popularity), d3.max(data, d => d.popularity)]);
+
+        const color = d => d.station === selectedStation ? "steelblue" : "red";
+        
+        return <g transform={`translate(${x}, ${y})`}>
+            
+                {//draw the map
+                    map.features.map((feature, idx) => {
+                    return <path key={idx+"boundary"} className={"boundary"} d={path(feature)} />
+                })}
+                {//draw the circle
+                    data.map(d => {
+                    const [x, y] =  projection([d.longitude, d.latitude]);
+                    return <circle key={"station" + d.longitude+d.latitude} cx={x} cy={y} 
+                        r={radius(d.popularity)} opacity={0.7} fill={color(d)} stroke={"black"}
+                        onMouseOver={()=>{setSelectedStation(d.station)}}
+                        onMouseOut={()=>{setSelectedStation(null)}}/>
+                    
+                })}
+            </g>
+       
+    }
+    
+    function Tooltip(props) {
+        const {d, stationYearData, left, top, height, width,MONTH} = props;
+        if (!d) {
+            return <g></g>;
+        } else {
+            return <g transform={`translate(${left}, ${top})`}>
+                    <text style={{ textAnchor:'start', fontSize:'15px'}}  transform={`translate(${0}, ${-5})rotate(0)`}>{d.station} </text>
+                    <SymmetricAreaChart offsetX={0} offsetY={0} height={height/2}
+                        width={width} data={stationYearData} MONTH={MONTH}/>
+                </g>
+        };  
+    }
+    function SymmetricAreaChart(props) {
+        const { offsetX, offsetY,  height, width, data,MONTH } = props;
+        //the text needed is given in the following
+        
+        const xScale = d3
+                .scaleBand()
+                .domain(MONTH)
+                .range([0, width]);
+        const maxnum = d3.max([d3.max(data, d => d.end),d3.max(data, d => d.start)])
+        
+//y1scale is for upper, start
+        const y1Scale = d3.scaleLinear()
+                .range([height/2,0])
+                .domain([0, maxnum])
+                .nice();
+        const y1ticks = y1Scale.ticks([3]);
+        
+        const y2Scale = d3.scaleLinear()
+                .range([0,height/2])
+                .domain([0, maxnum])
+                .nice();  
+        const y2ticks = y1Scale.ticks([3]);  
+
+        const p1 = d3.area()
+             .x(d => xScale(d.month))
+             .y0(height/2)
+             .y1(d => y1Scale(d.start))
+             .curve(d3.curveBasis)
+              (data);
+        const p2 = d3.area()
+             .x(d => xScale(d.month))
+             .y0(height/2)
+             .y1(d => -y1Scale(d.end)+height)
+             .curve(d3.curveBasis)
+              (data);
+
+        return <g transform={`translate(${offsetX}, ${offsetY})`} >
+            
+                <text style={{ textAnchor:'end', fontSize:'15px'}} transform={`translate(${width}, ${20})rotate(0)`}>
+                        {"Start"}
+                </text>
+
+                <line y2={height} stroke={`black`} />
+                    {
+                        y1ticks.map(tickValue => {
+                        return <g key={tickValue} transform={`translate(-10, ${y1Scale(tickValue)})`}>
+                            <line x2={10} stroke={"black"} />
+                            <text style={{ textAnchor: 'end', fontSize: '12px' }}>
+                                {tickValue}
+                            </text>
+                        </g>
+                        })
+                    }
+                    {y2ticks.map(tickValue => {
+                        return <g key={tickValue} transform={`translate(-10, ${height/2+y2Scale(tickValue)})`}>
+                            <line x2={10} stroke={"black"} />
+                            <text style={{ textAnchor: 'end', fontSize: '12px' }}>
+                                {tickValue}
+                            </text>
+                        </g>
+                    })}
+                    {//x axis
+                    }
+                <line x1={0} y1={height/2} x2={width} y2={height/2} stroke={`black`} />
+                    {//x ticks
+                    }
+                    {MONTH.map(tickValue => {
+                        return <g key={tickValue} transform={`translate(${xScale(tickValue)}, ${height})`}>
+                            <line y2={5} stroke={"black"} />
+                            <text style={{ textAnchor: 'middle', fontSize: '12px' }} y={20}>
+                                {tickValue}
+                            </text>
+                        </g>
+                    })}
+                    <path d={p1} fill={'lightgreen'} stroke={'black'} />
+                    <path d={p2} fill={'pink'} stroke={'black'} />
+                    {
+                       
+                    }
+                <text style={{ textAnchor:'end', fontSize:'15px'}} transform={`translate(${width*2/3}, ${-10})rotate(0)`}>
+                        {"Num. of riders over the year"}
+                </text>
+                <g transform={`translate(${offsetX}, ${offsetY+height/2})`}>
+                    
+                    <text style={{ textAnchor:'end', fontSize:'15px'}} transform={`translate(${width}, ${height/2-20})rotate(0)`}>
+                        {"End"}
+                </text>
+                </g>
+            </g>
+    }
+    function SymmetricBarChart(props) {
+        const { x, y, data, height, width, selectedStation, setSelectedStation } = props;
+        
+        const barticks = data.map(function (d) { return d.station; })
+        //barticks is a list of stations
+        //xscale is for stations
+        const barwidth = width / (barticks.length);
+        const color = d => d.station === selectedStation ? "red" : "#99d594";
+        const color1 = d => d.station === selectedStation ? "steelblue" : "#fc8d59";
+        const xScale = d3
+                .scaleBand()
+                .domain(barticks)
+                .range([0, width]);
+        const maxnum = d3.max([d3.max(data, d => d.end),d3.max(data, d => d.start)])
+//y1scale is for upper, start
+        const y1Scale = d3.scaleLinear()
+                .range([height/2,0])
+                .domain([0, maxnum])
+                .nice();
+                const y1ticks = y1Scale.ticks([7]);
+        const y2Scale = d3.scaleLinear()
+                .range([0,height/2])
+                .domain([0, maxnum])
+                .nice();  
+        const y2ticks = y1Scale.ticks([7]);    
+        return <g transform={`translate(${x}, ${y})`} >
+            {
+                //y asxes
+            }
+            
+            <line y2={height} stroke={`black`} />
+                    {
+                        y1ticks.map(tickValue => {
+                        return <g key={tickValue} transform={`translate(-10, ${y1Scale(tickValue)})`}>
+                            <line x2={10} stroke={"black"} />
+                            <text style={{ textAnchor: 'end', fontSize: '12px' }}>
+                                {tickValue}
+                            </text>
+                        </g>
+                        })
+                    }
+                    {y2ticks.map(tickValue => {
+                        return <g key={tickValue} transform={`translate(-10, ${height/2+y2Scale(tickValue)})`}>
+                            <line x2={10} stroke={"black"} />
+                            <text style={{ textAnchor: 'end', fontSize: '12px' }}>
+                                {tickValue}
+                            </text>
+                        </g>
+                    })}
+            {
+                //x axis
+            }
+            <line x1={0} y1={height/2} x2={width} y2={height/2} stroke={`black`} />
+
+            {
+                //barchart#1
+            }
+            <g transform={`translate(0, 0)`}>
+                {data.map(d => {
+                    return <rect key={d.station} width={barwidth} height={height/2 - y1Scale(d.start)}
+                        x={xScale(d.station)} fill={color(d)}
+                        y={y1Scale(d.start)} stroke={"black"}
+                        onMouseOver={()=>{setSelectedStation(d.station)}}
+                        onMouseOut={()=>{setSelectedStation(null)}}
+                    />
+                })}
+            </g>
+            {
+                //barchart#2
+            }
+            <g transform={`translate(0, 0)`}>
+                {data.map(d => {
+                    return <rect key={d.station} width={barwidth} height={y2Scale(d.end)}
+                        x={xScale(d.station)} fill={color1(d)}
+                        y={height/2} stroke={"black"}
+                        onMouseOver={()=>{setSelectedStation(d.station)}}
+                        onMouseOut={()=>{setSelectedStation(null)}}
+                    />
+                })}
+            </g>
+
+            {
+                //text value
+            }
+                <text style={{ textAnchor:'start', fontSize:'15px'}} transform={`translate(${width/3}, 0)`}>
+                        {"Num. of ridders start from a station"}
+                </text>
+                <g transform={`translate(${0}, ${height/2})`}>
+                    
+                        <text style={{ textAnchor:'start', fontSize:'15px'}} transform={`translate(${width/3}, ${height/2+10})`}>
+                        {"Num. of ridders end into a station"}
+                        </text>
+                </g>
+            
+            </g>
+    }
+    
+    const CitiBike = () => {
+        //month is a numerical number
+        const [month, setMonth] = React.useState('4');
+        const [selectedStation, setSelectedStation] = React.useState(null);
+        const dataAll = useData(csvUrl);
+        const map = useMap(mapUrl);
+        const MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        if (!map || !dataAll) {
+                return <pre>Loading...</pre>;
+            };
+        const WIDTH = 1200;
+        const HEIGHT = 800;
+        const margin = { top: 20, right: 40, bottom: 160, left: 40, gap:40 };
+        const innerWidth = WIDTH - margin.left - margin.right - margin.gap;
+        const innerHeight = HEIGHT - margin.top - margin.bottom - margin.gap;
+        const data = dataAll.filter( d => {
+            return d.month === MONTH[month];
+        });
+        const maxnum=d3.max(data, d => d.start);
+
+        // Note: stationYearData is the data of the year of a seleted station. 
+        const stationYearData = dataAll.filter( d=> {
+            return d.station == selectedStation;
+        }); 
+
+        //////handler:
+        //1. change month
+        const changeHandler = (event) => {
+                    setMonth(event.target.value);
+                }
+        //2. change selectedpoint
+        
+
+        //pass in selected Point
+        const selectedPoint = dataAll.filter(d => d.station===selectedStation)[0];
+        
+        
+        return <div>
+            <div>
+                <input key="slider" type='range' min='0' max='11' value={month} step='1' onChange={changeHandler}/>
+                <input key="monthText" type="text" value={MONTH[month]} readOnly/>
+            </div>
+                <svg width={WIDTH} height={HEIGHT}>
+                    <g>
+                        <SymbolMap x={margin.left} y={margin.top} height={innerHeight+margin.gap} 
+                        width={innerWidth/2} data={data} map={map} selectedStation={selectedStation} 
+                        setSelectedStation={setSelectedStation}/>
+                        <SymmetricBarChart x={margin.left+innerWidth/2} y={margin.top} data={data} height={innerHeight/2} width={innerWidth/2}
+                        selectedStation={selectedStation} setSelectedStation={setSelectedStation} maxnum={maxnum}/>
+                    </g>
+                    <Tooltip d={selectedPoint} stationYearData={stationYearData} left={innerWidth/2+margin.gap} top={margin.top+80+innerHeight/2} 
+                        height={innerHeight/2} width={innerWidth/2} MONTH={MONTH}/>
+                </svg>
+            <div style={{position: "absolute", textAlign: "left", width: "240px",left:"40px", top:"40px"}}>
+                <h3>Citi bike 2020</h3>
+                <p>A visualization of the numbers of citi bike riders over 2020.</p>
+            </div>
+            
+        </div>
+    }
+    ReactDOM.render( <CitiBike />, document.getElementById('root'));
+    </script>
+    </body>
+    </html>

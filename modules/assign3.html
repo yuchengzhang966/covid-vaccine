@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Charts using react</title>
+    <!--import the libraries needed-->
+    <!-- <link rel="stylesheet" href="styles.css"> -->
+    <style>
+
+    </style>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="https://d3js.org/d3-path.v2.min.js"></script>
+    <script src="https://d3js.org/d3-shape.v2.min.js"></script>
+    <script crossingin src="https://unpkg.com/react/umd/react.development.js"></script>
+    <script crossingin src="https://unpkg.com/react-dom/umd/react-dom.development.js"></script>
+    <script crossingin src="https://unpkg.com/babel-standalone/babel.js"></script>
+</head>
+
+<body>
+    <!--some necessary html tags-->
+    <h1>Let's make some charts.</h1>
+    <div id="root"></div>
+    <script type='text/babel'>
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////
+        // station	latitude	longitude	start	tripdurationS	end	tripdurationE	month
+        const margin = { top: 20, right: 20, bottom: 180, left: 40, gap: 50 };
+        const csvUrl = 'https://gist.githubusercontent.com/hogwild/3b9aa737bde61dcb4dfa60cde8046e04/raw/citibike2020.csv'
+
+        function useData(csvPath) {
+            const [dataAll, setData] = React.useState(null);
+            React.useEffect(() => {
+                d3.csv(csvPath).then(data => {
+                    data.forEach(d => {
+                        d.start = +d.start;
+                        d.tripdurationS = +d.tripdurationS;
+                        d.end = +d.end;
+                        d.tripdurationE = +d.tripdurationE;
+                    });
+                    setData(data);
+                });
+            }, []);
+            return dataAll;
+        }
+        //Y axis
+        function YAxes(props) {
+            const { yScale, height, width } = props;
+            const ticks = yScale.ticks();
+            if (props.chartType == "ScatterPlot") {
+                return <g>
+                    <line y2={height} stroke={`black`} />
+                    {ticks.map(tickValue => {
+                        return <g key={tickValue} transform={`translate(-10, ${yScale(tickValue)})`}>
+                            <line x2={10} stroke={"black"} />
+                            <text style={{ textAnchor: 'end', fontSize: '12px' }}>
+                                {tickValue}
+                            </text>
+                        </g>
+                    })}
+                    <text style={{ textAnchor: 'start', fontSize: '14px' }} transform={`translate(20, 120)rotate(270)`}>
+                        {"Trip duration ends in"}
+                    </text>
+                </g>
+            } else {
+                return <g >
+                    <line y2={height} stroke={`black`} />
+                    {ticks.map(tickValue => {
+                        return <g key={tickValue} transform={`translate(-10, ${yScale(tickValue)})`}>
+                            <line x2={10} stroke={"black"} />
+                            <text style={{ textAnchor: 'end', fontSize: '12px' }}>
+                                {tickValue}
+                            </text>
+                        </g>
+                    })}
+                    <text style={{ textAnchor: 'start', fontSize: '16px' }} transform={`translate(20, 100)rotate(270)`}>
+                        {"Bikers start from"}
+                    </text>
+                </g>
+            }
+        }
+        //X Axis
+        function XAxes(props) {
+            const { xScale, height, width } = props;
+
+            if (props.chartType === "ScatterPlot") {
+                const ticks = xScale.ticks();
+                return <g>
+                    <line x1={0} y1={height} x2={width} y2={height} stroke={`black`} />
+                    {ticks.map(tickValue => {
+                        return <g key={tickValue} transform={`translate(${xScale(tickValue)}, ${height})`}>
+                            <line y2={5} stroke={"black"} />
+                            <text style={{ textAnchor: 'middle', fontSize: '12px' }} y={20}>
+                                {tickValue}
+                            </text>
+                        </g>
+                    })}
+                    <text style={{ textAnchor: 'end', fontSize: '14px' }} transform={`translate(${width}, ${height - 10})`}>
+                        {"Trip Duration start from"}
+                    </text>
+                </g>
+            } else {
+                const ticks = props.barticks;
+                return <g >
+                    <line x1={0} y1={height} x2={width} y2={height} stroke={`black`} />
+                    {ticks.map(tickValue => {
+                        return <g key={"bartick" + tickValue} transform={`translate(${width - xScale(tickValue)}, ${height})`}>
+
+                            <text style={{ textAnchor: 'start', fontSize: '10px' }} y={5} x={1} dy={".35em"} transform={`rotate(80)`}>
+                                {tickValue}
+                            </text>
+                        </g>
+                    })}
+                </g>
+            }
+        }
+        //onMouseOver={() => mouseOver(d)} onMouseOut={mouseOut}
+        // <line y2={5} stroke={"black"} />
+
+
+
+
+        function BarChart({ data, height, width, barticks, selected, mouseOver, mouseOut }) {
+            if (!data) {
+                return <pre>Loading...</pre>;
+            };
+
+
+            const xScale = d3
+                .scaleBand()
+                .domain(barticks)
+                .range([0, width]);
+
+            const yScale = d3.scaleLinear()
+                .range([height, 0])
+                .domain([0, 4000])
+                .nice();
+
+            const x1Scale = d3.scaleLinear()
+                .range([0, width])
+                .domain([0, d3.max(data, d => d.tripdurationS)])
+                .nice();
+
+            const y1Scale = d3.scaleLinear()
+                .range([height, 0])
+                .domain([0, d3.max(data, d => d.tripdurationE)])
+                .nice();
+
+            //
+            //transform={`translate(${margin.left}, ${margin.top})`}
+            //<Points data={data} xScale={xScale} yScale={yScale} width={innerWidth} height={innerHeight} />
+            // <line x1={0} y1={height} x2={width} y2={height} stroke={`black`} />
+            return <g transform={`translate(${margin.left}, ${height + margin.top + margin.gap})`} >
+                <YAxes yScale={yScale} height={height} width={width} chartType={"BarChart"} />
+                <Bars data={data} xScale={xScale} yScale={yScale} width={width} height={height} barticks={barticks} selected={selected} mouseOver={mouseOver} mouseOut={mouseOut} x1Scale={x1Scale} y1Scale={y1Scale} />
+                <XAxes xScale={xScale} height={height} width={width} chartType={"BarChart"} barticks={barticks} />
+            </g>
+        }
+
+
+
+        function Points({ data, xScale, yScale, width, height, selected, mouseOver, mouseOut }) {
+
+
+            const color = d => d.station === selected ? "red" : "steelblue";
+            const radius = d => d.station === selected ? 10 : 5;
+
+
+            if (selected === null) {
+                return <g>{data.map(d => {
+                    return <circle key={d.station} cx={xScale(d.tripdurationS)}
+                        cy={yScale(d.tripdurationE)} r={5} fill={"steelblue"} stroke={"black"}
+                        onMouseOver={() => mouseOver(d, (xScale(d.tripdurationS)), (yScale(d.tripdurationE)))} onMouseOut={mouseOut} />
+                })}
+                </g>
+            } else {
+                return <g>
+                    {data.map(d => {
+                        return <circle key={d.station} cx={xScale(d.tripdurationS)}
+                            cy={yScale(d.tripdurationE)} r={radius(d)} fill={color(d)} stroke={"black"}
+                            onMouseOver={() => mouseOver(d, (xScale(d.tripdurationS)), (yScale(d.tripdurationE)))} onMouseOut={mouseOut} />
+                    })}
+                    <rect x={0} y={0} width={width} height={height} fill={"yellow"} opacity={0.5} />
+                    {data.filter(d => d.station === selected).map(d => {
+                        return <circle key={d.station} cx={xScale(d.tripdurationS)}
+                            cy={yScale(d.tripdurationE)} r={10} fill={"red"} stroke={"black"}
+                            onMouseOver={() => mouseOver(d, (xScale(d.tripdurationS)), (yScale(d.tripdurationE)))} onMouseOut={mouseOut}
+                        />
+                    })}
+
+                </g>
+            }
+        }
+        //onMouseOver={() => mouseOver(d)} onMouseOut={mouseOut}   fill={"steelblue"} 
+
+        function Bars({ data, xScale, yScale, width, height, barticks, selected, mouseOver, mouseOut, x1Scale, y1Scale }) {
+            const barwidth = width / (barticks.length);
+
+            //const [selected, setSelected] = React.useState(null);
+
+            const color = d => d.station === selected ? "red" : "steelblue";
+
+            return <g transform={`translate(-10, 0)`}>
+                {data.map(d => {
+                    return <rect key={d.station} width={barwidth} height={height - yScale(d.start)}
+                        x={width - xScale(d.station)} fill={color(d)}
+                        y={yScale(d.start)} stroke={"black"}
+                        onMouseOver={() => mouseOver(d, (x1Scale(d.tripdurationS)), (y1Scale(d.tripdurationE)))} onMouseOut={mouseOut}
+                    />
+                })}
+            </g>
+        }
+
+
+
+
+        function ScatterPlot({ data, height, width, selected, mouseOver, mouseOut }) {
+            if (!data) {
+                return <pre>Loading...</pre>;
+            };
+
+            const xScale = d3.scaleLinear()
+                .range([0, width])
+                .domain([0, d3.max(data, d => d.tripdurationS)])
+                .nice();
+
+            const yScale = d3.scaleLinear()
+                .range([height, 0])
+                .domain([0, d3.max(data, d => d.tripdurationE)])
+                .nice();
+
+            return <g transform={`translate(${margin.left}, ${margin.top})`}>
+                <Points data={data} xScale={xScale} yScale={yScale} width={width}
+                    height={height} selected={selected} mouseOver={mouseOver} mouseOut={mouseOut} />
+                <YAxes yScale={yScale} height={height} width={width} chartType={"ScatterPlot"} />
+                <XAxes xScale={xScale} height={height} width={width} chartType={"ScatterPlot"} />
+            </g>
+        }
+
+        function Tooltip({ left, top, selected, data, themonth }) {
+            //console.log(left,top,selected)
+            const divStyle = {
+                position: 'absolute',
+                textalign: 'center',
+                width: '150px',
+                height: '140px',
+                left: left + margin.left + 13 + 'px',
+                top: top + margin.top + 120 + 'px',
+                padding: '4px',
+                font: '3px sans - serif',
+                background: 'rgb(156, 231, 169)',
+                border: '0px',
+                borderRadius: '8px',
+                pointerEvents: 'none',
+            };
+            const textStyle = {
+                textIndent: '9px',
+                font: "5px sans - serif",
+                letterSpacing: '0.3px',
+                lineSpacing : '5px',
+                position: 'relative',
+                left: '25px'
+            }
+            if (selected == null) {
+                return <div >   </div>
+            }
+
+            const node = data.filter(d => d.station === selected)
+
+            return <div >
+                <div style={divStyle} key="tool" >
+                    <div> {selected} </div>
+                    <br />
+                    <div> trip durations: </div>
+           
+                    <div style={textStyle}>
+                        <br />
+                        <li>{node[0].tripdurationS}</li>
+                        <li>{node[0].tripdurationE}</li>
+
+                    </div>
+
+                </div>
+            </div>
+
+        }
+
+
+        // this function generates the whole chart including scatterplot and barchart
+        const Charts = () => {
+            const [selected, setSelected] = React.useState(null);
+            const [left, setLeft] = React.useState(0);
+            const [top, setTop] = React.useState(0);
+            const [themonth, setmonth] = React.useState(5);
+            let allmonth = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const dataAll = useData(csvUrl);
+            //const data = useDataMonth(dataAll,themonth);
+
+            while (!dataAll) {
+                return <pre>Loading...</pre>;
+            };
+            const WIDTH = 600;
+            const HEIGHT = 800;
+            const innerHeight = HEIGHT - margin.top - margin.bottom;
+            const innerWidth = WIDTH - margin.left - margin.right;
+
+            var tripS;
+            var tripE;
+
+            const mouseOver = (d, l, t) => {
+                setLeft(l)
+                setTop(t)
+                setSelected(d.station);
+                tripS = d.tripdurationS;
+                tripE = d.tripdurationE;
+
+            };
+            const mouseOut = () => {
+                setLeft(0)
+                setTop(0)
+                setSelected(null);
+            };
+
+            const changemonth = (e) => {
+
+                setmonth(e.target.value)
+            }
+
+            const data = dataAll.filter(d => {
+                return d.month === allmonth[parseInt(themonth)];
+            });
+
+
+
+            console.log(tripS)
+
+            //transform={`translate(${margin.left}, ${margin.top})`}
+
+            const barticks = data.map(function (d) { return d.station; })
+            return (
+                <div>
+                    <div>
+                        <input key="slider" type='range' min='0' max='11' step='1' defaultValue="4"
+                            onChange={changemonth} />
+                        <input key="monthText" type="text" value={allmonth[parseInt(themonth)]} readOnly />
+                    </div>
+
+                    <svg width={WIDTH} height={HEIGHT} >
+
+                        <ScatterPlot data={data} height={innerHeight / 2} width={innerWidth} selected={selected} mouseOver={mouseOver} mouseOut={mouseOut} />
+                        <BarChart data={data} height={innerHeight / 2} width={innerWidth} barticks={barticks} selected={selected} mouseOver={mouseOver} mouseOut={mouseOut} />
+                    </svg>
+
+
+                    <Tooltip left={left} top={top} selected={selected} data={data} />
+
+                </div>
+            )
+        }
+
+        const rootElement = document.getElementById('root');
+        ReactDOM.render(<Charts />, rootElement);
+
+
+       // <ScatterPlot data={data} innerHeight={innerHeight / 2} innerWidth={innerWidth} />
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+    </script>
+</body>
+
+</html>
