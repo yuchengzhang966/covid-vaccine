@@ -64,6 +64,7 @@ function useData(csvPath1, csvPath2){
                 d.total_cases_per_million = + d.total_cases_per_million;
                 d.total_vaccinations_per_hundred = + d.total_vaccinations_per_hundred;
                 d.new_cases_per_million = + d.new_cases_per_million;
+                d.stringency_index = + d.stringency_index;
                 d.cases_growth_rate = d.new_cases_per_million/d.total_cases_per_million;
                 d.time = new Date(d.month+'/1/'+d.year);
                 const match = datasets[1].filter(entry=> entry['alpha-3'] === d.iso_code);
@@ -139,22 +140,77 @@ function Y(props) {
 var pointArray = {}
 
 function X(props) {
-    const { country,data, dim_array, dimensions, gap,selectedCountry, setSelectedCountry } = props;
+    const { country,data, dim_array, dimensions, gap,selectedCountry, setSelectedCountry,dd } = props;
+    //this function generate the lines and red points
     var one=countrydata.filter(c => c["iso_code"] ==country)
     var c=one[0]["iso_numeric"]
-    
+//what is countrydata?
+//array: 
+//"": "0"
+// cases_growth_rate: 1
+// continent: "Asia"
+// iso_code: "AFG"
+// iso_numeric: "004"
+// location: "Afghanistan"
+// month: "2"
+// new_cases_per_million: 0.026
+// new_deaths_per_million: ""
+// new_tests_per_thousand: ""
+// people_vaccinated: ""
+// people_vaccinated_per_hundred: ""
+// positive_rate: ""
+// stringency_index: "8.33"
+// tests_units: ""
+// time: Sat Feb 01 2020 00:00:00 GMT+0800 (China Standard Time) {}
+// total_cases: "1.0"
+// total_cases_per_million: 0.026
+// total_deaths: ""
+// total_deaths_per_million: ""
+// total_tests: ""
+// total_tests_per_thousand: ""
+// total_vaccinations: ""
+// total_vaccinations_per_hundred: 0
+// year: "2020"
     pointArray = {}
     function color(country){
-        if (country == selectedCountry){return "black"}else{return "#CECECE"}}
+        if(dd==true){return "red"}if (country == selectedCountry){return "black"}else{return "#CECECE"}}
     function stroke(country){
-            if (country == selectedCountry){return "5px"}else{return "1px"}}
+         if(dd==true){return "3px"}   if (country == selectedCountry){return "5px"}else{return "1px"}}
+
+    // calculate the stringency, death rate, Total cases per million
+    var total_stringency=0;
+    one.forEach(function(time,index){
+        total_stringency+=time["stringency_index"];
+    })
+    var stringency=total_stringency/one.length;
+
+    var total_death = one[one.length-1]["total_deaths_per_million"]
+    var total_cases = one[one.length-1]["total_cases_per_million"]
     
+    var death_rate=0;
+    if(total_cases!=0 && total_death!=0){
+        death_rate=total_death/total_cases;
+    }
+    
+    
+
+//data is the non time data for a country
+
     return <g >
         {dimensions.map(function (dim, index) {
                 var obj = dim_array[dim];
                 //console.log(obj(data[dim]))
                 var x1 = gap * index;
-                var y1 = obj(data[dim])
+                var y1 
+                if (dim=="stringency_index" || dim=="death_rate" || dim=="total_cases_per_million"){ 
+                    if (dim=="stringency_index"){y1=obj(stringency)}
+                    if (dim=="death_rate"){y1=obj(death_rate)}
+                    if (dim=="total_cases_per_million"){y1=obj(total_cases)}
+                    
+                }else{
+                    y1= obj(data[dim])
+                }
+                
                 pointArray[dim] = { x1, y1 };
                 return <g key={'X' + dim} transform={`translate(${x1}, ${y1})`}>
                     <circle key={'line' + dim} r='2' fill={"#FF8EC7"}></circle>
@@ -167,15 +223,20 @@ function X(props) {
                     var y1 = pointArray[dim].y1
                     var x2 = pointArray[dimensions[index + 1]].x1
                     var y2 = pointArray[dimensions[index + 1]].y1
+                    //onMouseOut={()=>{setSelectedCountry(null)}}
                     return <g key={"paths" + dim}>
-                        <line key={'path' + dim} x1={x1} y1={y1} x2={x2} y2={y2} stroke={color(c)} strokeWidth={stroke(c)} />
+                        <line key={'path' + dim} x1={x1} y1={y1} x2={x2} y2={y2} 
+                        stroke={color(c)} strokeWidth={stroke(c)} 
+                        onMouseOver={()=>{setSelectedCountry(c)}}
+                        />
+                        
                     </g>}})}</g>
 }
 
 function ParallelChart(props) {
-    const { data2, selectedCountry, setSelectedCountry } = props;
+    const { data2, selectedCountry, setSelectedCountry,selectedCountryDD } = props;
     var dimensions = ['population_density', 'median_age', 'gdp_per_capita',
-        'extreme_poverty', 'female_smokers', 'male_smokers', 'handwashing_facilities'
+        'male_smokers', 'handwashing_facilities'
         , 'hospital_beds_per_thousand']
     var dim_array = {}
     dimensions.forEach(function (item, index) {
@@ -195,29 +256,86 @@ function ParallelChart(props) {
         }
         dim_array[item] = scale;
     })
+// stringency
+
+var scale = d3.scaleLinear()
+            .domain([0, 100])
+            .range([HEIGHT, 0]).nice();
+dim_array["stringency_index"]=scale
+dimensions.push("stringency_index")
+
+var scale = d3.scaleLinear()
+            .domain([0, 0.2])
+            .range([HEIGHT, 0]).nice();
+dim_array["death_rate"]=scale
+dimensions.push("death_rate")
+
+var scale = d3.scaleLinear()
+            .domain([0, 170000])
+            .range([HEIGHT, 0]).nice();
+dim_array["total_cases_per_million"]=scale
+dimensions.push("total_cases_per_million")
+
+
+
+   
     var one=countrydata.filter(c => c["iso_numeric"] ==selectedCountry)
-    var c=c="c"
+    var c="c"
     if (one[0]!=undefined){
         c=one[0]["iso_code"]
         var dataset_for_one=data2.filter(x=>x["iso_code"]==c)
-        console.log(dataset_for_one)
         dataset_for_one=dataset_for_one[0]
-        //var c = one[0]["iso_code"]
+    }
+    var ddone=countrydata.filter(c => c["iso_numeric"] ==selectedCountryDD)
+    var dd="c"
+    if (ddone[0]!=undefined){
+        dd=ddone[0]["iso_code"]
+        var dataset_for_dd=data2.filter(x=>x["iso_code"]==dd)
+        dataset_for_dd=dataset_for_dd[0]
     }
     //c: the iso_code of the selected country
     //var dataset_for_one=data2.filter(x=>x["iso_code"]==c)
-
     var gap = WIDTH / dimensions.length;
+
+    ///brush/////////////////////////////////////////////////////////////////////////////////////
+    // React.useEffect(()=>{
+    //     var brush = d3
+    //      .brushX()
+    //      .extent([
+    //        [margin.left, margin.top],
+    //        [WIDTH - margin.right, HEIGHT - margin.bottom]
+    //      ])
+    //      .on("end", brushEnd);
+    //    d3.select(brush).call(brush);
+       
+    // var brushEnd = () => {
+    //     if (!d3.event.selection) {
+    //       this.props.updateRange([]);
+    //       return;
+    //     }
+    //     const [x1, x2] = d3.event.selection;
+    //     const range = [this.state.xScale.invert(x1), this.state.xScale.invert(x2)];
+    //     this.props.updateRange(range);
+    //   };
+    // }
+    // )
     
+/////////////////////////////////////////////////////////////////////////////////////
+
         return <g key={"parrallelchart"}>{
             //generate the data points
+            //loop every country
                     data2.map(function (d, index) {
                         return <g key={'data2' + index} transform={`translate(0, 10)`}>
-                            <X country={d["iso_code"]} data={data2[index]} dim_array={dim_array} dimensions={dimensions} gap={gap} selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry} />
+                            <X country={d["iso_code"]} data={data2[index]} 
+                            dim_array={dim_array} dimensions={dimensions} 
+                            gap={gap} selectedCountry={selectedCountry} 
+                            setSelectedCountry={setSelectedCountry} 
+                            dd={false}/>
                         </g>
                     })
                 }
-                {//generate y axis:
+                {//generate y axis: loop the dimensions
                     dimensions.map(function (dim, index) {
                         //var name = dimensions[index];
                         var yScale = dim_array[dim]
@@ -225,16 +343,98 @@ function ParallelChart(props) {
                             <Y dim={dim} yScale={yScale} height={HEIGHT} />
                         </g>
                     })}
-                {
+                {//rerender the selected point so that it stands out
                     data2.filter(x=>x["iso_code"]==c).map(function(){
-                        console.log("selected")
+                        
                         return <g key={"selectedcountry"}transform={`translate(0, 10)`}> 
-                        <X country={c} data={dataset_for_one} dim_array={dim_array} dimensions={dimensions} gap={gap} selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry} />
+                        <X country={c} data={dataset_for_one} 
+                        dim_array={dim_array} dimensions={dimensions} 
+                        gap={gap} selectedCountry={selectedCountry} 
+                        setSelectedCountry={setSelectedCountry} 
+                        dd={false}/>
+                        </g>})
+                }
+                {
+                    data2.filter(x=>x["iso_code"]==dd).map(function(){
+                     
+                        return <g key={"dd"}transform={`translate(0, 10)`}> 
+                        <X country={dd} data={dataset_for_dd} dim_array={dim_array} 
+                        dimensions={dimensions} gap={gap} selectedCountry={selectedCountry} 
+                        setSelectedCountry={setSelectedCountry} 
+                        dd={true}/>
                         </g>})
                 }
             </g>
  
 }
+function Tooltip(props){
+    
+    var {selectedCountry, data2, dataset1}=props
+    if (selectedCountry == null) {
+        return <span > .  </span>
+    }
+  
+    //data set 1
+    var  selectedCountryData = dataset1.filter(d=> d["iso_numeric"] === selectedCountry);
+    const divStyle = {
+        position: 'absolute',
+        textalign: 'center',
+        width: '400px',
+        height: '350px',
+        padding: '4px',
+        left:"700px",
+        top:"720px",
+    };
+    
+    // total_cases: "57898.0"total_cases_per_million: 
+    // 1487.297total_deaths: "2546.0"total_deaths_per_million:
+    //  "65.402"total_tests: ""total_tests_per_thousand: 
+    // ""total_vaccinations: ""total_vaccinations_per_hundred: 0
+    var obj=selectedCountryData[selectedCountryData.length-1]
+    var location=obj["location"]
+    var total_cases=obj["total_cases"]
+    var total_cases_per_million = obj["total_cases_per_million"]
+    var total_death=obj["total_deaths_per_million"]
+    var total_tests,total_vaccinations
+    if(selectedCountryData.length-2<=0){total_tests=obj["total_tests"]; total_vaccinations=obj["total_vaccinations"]}
+    else{
+        total_tests=selectedCountryData[selectedCountryData.length-2]["total_tests"];
+        total_vaccinations=selectedCountryData[selectedCountryData.length-2]["total_vaccinations"]
+    }
+    
+    var death_rate=(total_death/total_cases_per_million).toFixed(3);
+    var iso=obj["iso_code"]
+    var  d2 = data2.filter(d=> d["iso_code"] === iso);
+
+    var population_density = d2[0]["population_density"]
+    var gdp=d2[0]
+    
+        return<span >
+        <div style={divStyle}>
+            {/* <h4>You have selected <h3> {location}</h3>, 
+                up until April 2020, it has <h3> {total_cases_per_million}</h3> 
+                confirmed COVID cases per million,
+                 and has performed <h3> {total_vaccinations}</h3> vaccine injections
+                  on a population density of <h3> {population_density}</h3>  of 
+                 its citizens, ...</h4> */}
+             <h3 > {location}</h3>
+            <p >corresponds to the black line in the parrallel chart, while the red line encodes the country defined in the dropdown </p>
+            
+            <h3 fontSize="20px"> total_cases:{total_cases }</h3>
+            <h3 > total_cases_per_million:{total_cases_per_million }</h3>
+            <h3 > total_deaths_per_million:{(total_death) }</h3>
+            <h3 > total_tests:{total_tests}</h3>
+            <h3 > total_vaccinations:{(total_vaccinations) }</h3>
+            <h3 > death_rate:{death_rate}</h3> 
+            <h3 > population_density:{population_density}</h3> 
+        </div>
+
+        
+    </span>
+      
+    
+}
+
 //public data
 var YearMonth = ['2020/2', '2020/3', '2020/4', '2020/5', '2020/6', '2020/7', '2020/8', '2020/9', '2020/10', '2020/11', '2020/12', '2021/1', '2021/2', '2021/3', '2021/4']
 var data1;
@@ -266,6 +466,7 @@ const CitiBike = () => {
     const rawData = useData(csvUrl, isoCode);
     const { dataset1, dataset2 } = rawData
     const map = useMap(mapUrl);
+    
     data2 = useData2(csv2);
     if (!map || !dataset1||!dataset2 || !data2) {
             return <pre>Loading...</pre>;
@@ -316,25 +517,33 @@ const CitiBike = () => {
                 selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry} 
                 selectedCountryDD={selectedCountryDD} setSelectedCountryDD={setSelectedCountryDD}/>
                 <LineChart selectedCountry={selectedCountryDD} selectedCountryData={selectedCountryData}/>
-                <tooltip />
+                <rect x="650" y="340" width="450" height="450" fill="white" stroke="purple"/>
+                
             </svg> 
-
-        
+           
 
         <svg width={WIDTH + margin1.left + margin1.right} height={HEIGHT + margin1.top + margin1.bottom}>
             <g transform={`translate(${margin1.left},${margin1.top} )`}>
-                <ParallelChart data2={data2} selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry} />
+                <ParallelChart data2={data2} selectedCountry={selectedCountry} 
+                setSelectedCountry={setSelectedCountry} 
+                selectedCountryDD={selectedCountryDD}/>
             </g>
         </svg>
+        <Tooltip selectedCountry={selectedCountry} data2={data2} 
+                dataset1={dataset1}/>
+        
         {/* <div style={{position: "absolute", textAlign: "left", width: "240px",left:"40px", top:"40px"}}>
             <h3>Citi bike 2020</h3>
+<Tooltip selectedCountry={selectedCountry} data2={data2} 
+                selectedCountryData={selectedCountryData} />
+
             <p>A visualization of the numbers of citi bike riders over 2020.</p>
-        </div> */}
+        </div> 
+        */}
 
     </div>
 
 }
-
 
 
 
