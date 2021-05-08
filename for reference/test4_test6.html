@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CitiBike Stations</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="https://d3js.org/d3-path.v2.min.js"></script>
+    <script src="https://d3js.org/d3-shape.v2.min.js"></script>
+    <script src="https://d3js.org/topojson.v1.min.js"></script>
+    <script src="https://d3js.org/d3-array.v2.min.js"></script>
+    <script src="https://d3js.org/d3-geo.v2.min.js"></script>
+    <script src="https://d3js.org/d3-geo-projection.v3.min.js"></script>
+    <script src="https://unpkg.com/react/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone/babel.js"></script>
+    <link rel="stylesheet" href="styles.css" > 
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+    const WIDTH = 1200;
+    const HEIGHT = 600;
+    const margin = { top: 20, right: 40, bottom: 20, left: 40 };
+    const offSet = 30;
+    const LineChartoffsetX = WIDTH/2+ 50;
+    const LineChartoffsetY = 0;
+    const LineChartHeight = 250;
+    const LineChartWidth = 300;
+    // const csvUrl = "https://gist.githubusercontent.com/hogwild/1cd42bbfecfc53ed264e9801d82c0977/raw/ae784b8e93d146903f3fac15b47659863389a35f/worldCountries.csv";
+    const csvUrl = "https://raw.githubusercontent.com/jane-yucheng/covid-vaccine/main/dataset/covid1.csv";
+    // const mapUrl = "https://unpkg.com/world-atlas@2.0.2/countries-110m.json";
+    const mapUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json";
+    const isoCode = "https://raw.githubusercontent.com/lukes/ISO-3166-Countries-with-Regional-Codes/master/all/all.csv";
+    
+    function useMap(jsonPath) {
+        const [data, setData] = React.useState(null);
+        React.useEffect(() => {
+            d3.json(mapUrl).then(topoJsonData => {
+                setData(
+                    topojson.feature(topoJsonData, topoJsonData.objects.countries),
+                  )});
+        }, []);
+        return data; 
+    }
+
+    function useData(csvPath1, csvPath2){
+        const [dataAll, setData] = React.useState([]);
+        React.useEffect(() => {
+            Promise.all([d3.csv(csvPath1), d3.csv(csvPath2)]).then(datasets => {
+                datasets[0].forEach(d => {
+                    d.total_cases_per_million = + d.total_cases_per_million;
+                    d.total_vaccinations_per_hundred = + d.total_vaccinations_per_hundred;
+                    d.new_cases_per_million = + d.new_cases_per_million;
+                    d.cases_growth_rate = d.new_cases_per_million/d.total_cases_per_million;
+                    d.time = new Date(d.month+'/1/'+d.year);
+                    const match = datasets[1].filter(entry=> entry['alpha-3'] === d.iso_code);
+                    if(match[0]){
+                        d.iso_numeric = match[0]['country-code'];
+                    }
+              
+                });
+
+                setData({dataset1:datasets[0], dataset2:datasets[1]});
+            });
+        }, []);
+        return dataAll;}
+   
+    function LineChart(props){
+        const {selectedCountry, selectedCountryData} = props;
+        console.log(selectedCountry);
+        const xValue = d => d.time;
+        const yValue1 = d => d.new_cases_per_million;
+        const yValue2 = d => d.new_deaths_per_million;
+        const xScale = d3.scaleTime()
+            .domain(d3.extent(selectedCountryData, xValue))
+            .range([0, LineChartWidth])
+            .nice();
+       const max_cases = d3.max(selectedCountryData,  yValue1);
+       const max_deaths = d3.max(selectedCountryData,  yValue2);
+       const yScale = d3.scaleLinear()
+            .domain([0, d3.max([max_cases, max_deaths])])
+            .range([LineChartHeight, 0])
+            .nice();
+
+        const line1 = d3.line()
+            .x(d => xScale(d.time))
+            .y(d => yScale(d.new_cases_per_million))
+            .curve(d3.curveBasis)(selectedCountryData);
+        
+        const line2 = d3.line()
+            .x(d => xScale(d.time))
+            .y(d => yScale(d.new_deaths_per_million))
+            .curve(d3.curveBasis)(selectedCountryData);
+        const formatTime = d3.timeFormat("%B, %Y");
+        const parseTime = d3.timeParse("%B, %Y");
+
+        const ticks = xScale.ticks(5).map(d => {
+         
+            return formatTime(d)});
+       
+        return <g transform={`translate(${LineChartoffsetX}, ${LineChartoffsetY})`}>
+                <path className={"line-path"} id={'cases'} d={line1} fill={"None"} stroke={"black"}  stroke-width={'2px'} />
+                <path className={'line-path'} id={"deaths"} d={line2} fill={"None"} stroke={"red"} stroke-width={'2px'} />
+              
+                {ticks.map(tickValue => {
+                    <g key={tickValue} transform={`translate(${30}, ${10})`}>
+                        <rect x={0} y={0} width={20} height={20} fill={'red'}/>
+                        <line y2={10} stroke='black'/>
+                        <text style={{textAnchor: 'middle', fontSize:'10px' }} >
+                                {tickValue}
+                        </text>
+                    </g>
+                })}
+               
+                {<line x1={0} y1={LineChartHeight} x2={LineChartWidth} y2={LineChartHeight} stroke='black'/>}
+                {<line y2={LineChartHeight} stroke='black'/>}
+                
+                {yScale.ticks().map(tickValue => 
+                    <g key={tickValue} transform={`translate(-10, ${yScale(tickValue)})`}>
+                        
+                        <line x2={10} stroke='black' />
+                        <text style={{ textAnchor:'end', fontSize:'10px' }} >
+                            {tickValue}
+                        </text>
+                    </g>
+                )}        
+            </g>
+    } 
+        
+
+    function TheMap(props) {
+    const {map, data, collection, cScale, month, year, countries, type, selectedCountry, setSelectedCountry, selectedCountryDD, setSelectedCountryDD} = props;
+    const filteredData = data.filter(d => d.month === month && d.year === year);
+    console.log(filteredData);
+
+    const opacity = d => d.iso_numeric === selectedCountry? 1: 0.6;
+    const fill = function(d, cScale, type){
+        if(type === 'Vaccinations'){
+            return cScale(d.total_vaccinations_per_hundred)
+        }if(type =="Cases"){
+            return cScale(d.total_cases_per_million)
+        }if(type =="GrowthRate")
+            return cScale(d.cases_growth_rate)
+    };
+    if(type ==='Cases'){
+        const projection = d3.geoEqualEarth().fitExtent([[margin.left,margin.top],[WIDTH/2, HEIGHT/2-offSet]] ,map);
+   
+        const path = d3.geoPath(projection);
+
+        return <g>
+        <path className={'sphere'} d={path({type: 'Sphere'})} />
+        {map.features.map(feature => { 
+            const country = filteredData.filter(d => d.iso_numeric === feature.id);
+            if(country[0]){ 
+               
+                return <path key={feature.properties.name+"boundary"} className={"boundary"} 
+                    d = {path(feature)} style={{ "fill" : fill(country[0], cScale, type)}}
+                    onMouseOver={()=>{setSelectedCountry(country[0].iso_numeric);setSelectedCountryDD(country[0].iso_numeric)} }
+                    onMouseOut={()=>setSelectedCountry(null)} opacity={opacity((country[0]))}/>
+
+        }else{
+            return <path key={feature.properties.name+"boundary"} className={"boundary"} 
+                    d = {path(feature)} style={{ "fill" : "#aba8a1"}} 
+                    onMouseOver={()=>{setSelectedCountry(feature.id); setSelectedCountryDD(feature.id)}} 
+                    onMouseOut={()=>setSelectedCountry(null)} opacity={0.6}/>
+        }})}
+        </g>
+    }if(type ==="Vaccinations"|| type==="GrowthRate"){
+        const projection = d3.geoEqualEarth().fitExtent([[margin.left, HEIGHT/2+offSet/2],[WIDTH/2, HEIGHT-margin.bottom-offSet/2]] ,map);
+  
+        const path = d3.geoPath(projection);
+  
+        return <g>
+        <path className={'sphere'} d={path({type: 'Sphere'})} />
+        {map.features.map(feature => { 
+            const country = filteredData.filter(d => d.iso_numeric === feature.id);
+           
+            if (country[0]){  
+              
+                return <path key={feature.properties.name+"boundary"} className={"boundary"} 
+                    d = {path(feature)} style={{ "fill" : fill(country[0], cScale, type)}} 
+                    onMouseOver={()=>{setSelectedCountry(country[0].iso_numeric); setSelectedCountryDD(country[0].iso_numeric)}}
+                    onMouseOut={()=>setSelectedCountry(null)} opacity={opacity(country[0])}/>       
+        }else{
+            return <path key={feature.properties.name+"boundary"} className={"boundary"} 
+                    d = {path(feature)} style={{ "fill" : "#aba8a1"}} 
+                    onMouseOver={()=>{setSelectedCountry(feature.id); setSelectedCountryDD(feature.id)}} 
+                    onMouseOut={()=>setSelectedCountry(null)} opacity={0.6} />
+        }})}
+      </g>}}
+  
+    
+      function Legend(props){
+        const {type} = props;
+        const xScale = d3.scaleLinear().domain([0,99]).range([0, WIDTH/2-margin.left-margin.right]);
+        var data = Array.from(Array(100).keys());
+     
+        if(type==='Cases'){
+            const interpolator = d3.interpolateYlOrRd;
+            const cScale = d3.scaleSequential().interpolator(interpolator).domain([0,99]);
+            return <g transform = {`translate(${margin.left},${HEIGHT/2-margin.bottom})`}>
+
+              {data.map(d=> {
+                return <rect x = {(Math.floor(xScale(d)))} y = {0} height={20} width={d==99? 6: (Math.floor(xScale(d+1)) - Math.floor(xScale(d)) + 1)}
+               fill={cScale(d)} />})}
+
+            </g>
+        }if(type==="Vaccinations"){
+            const interpolator = d3.interpolateBlues;
+            const cScale = d3.scaleSequential().interpolator(interpolator).domain([0,99]);
+            return <g transform = {`translate(${margin.left},${HEIGHT-margin.bottom})`}>
+              {data.map(d=> {
+                return <rect x = {(Math.floor(xScale(d)))} y = {0} height={20} width={d==99? 6: (Math.floor(xScale(d+1)) - Math.floor(xScale(d)) + 1)}
+               fill={cScale(d)}/>})}
+            </g>
+    }if(type==="GrowthRate"){
+            const interpolator = d3.interpolateOranges;
+            const cScale = d3.scaleSequential().interpolator(interpolator).domain([0,99]);
+            return <g transform = {`translate(${margin.left},${HEIGHT-margin.bottom})`}>
+              {data.map(d=> {
+                return <rect x = {(Math.floor(xScale(d)))} y = {0} height={20} width={d==99? 6: (Math.floor(xScale(d+1)) - Math.floor(xScale(d)) + 1)}
+               fill={cScale(d)}/>})}
+
+            </g>
+    }
+}
+    function VaccinationsMap(props){
+        const{map, data, collection, month, year, type, selectedCountry, setSelectedCountry, selectedCountryDD, setSelectedCountryDD} = props
+        const countries = data.filter(d=> d.iso_code.slice(0,4)!=="OWID").map(d=>d.location);
+        const continents = data.filter(d=> d.iso_code.slice(0,4)==="OWID").map(d=>d.location);
+      
+        const unique_countries = countries.filter((a, b) => countries.indexOf(a) === b);
+        const unique_continents = continents.filter((a, b) => continents.indexOf(a) === b);
+        if(type==="Vaccinations"){
+        const total_vaccinations = data.map(d=> d.total_vaccinations_per_hundred);
+        
+        const colorScale = d3.scaleSequentialSymlog().interpolator(d3.interpolateBlues).domain([d3.min(total_vaccinations),d3.max(total_vaccinations)]);
+
+        return <g>
+    
+                <TheMap map={map} data={data} cScale={colorScale} month={month} year = {year} countries={countries} type={"Vaccinations"} selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry}/>
+                <Legend  type={"Vaccinations"}/>
+            </g>
+    }else{
+        const cases_growth_rate = data.map(d => d.cases_growth_rate);
+        const colorScale = d3.scaleSequentialSymlog().interpolator(d3.interpolateOranges).domain([d3.min(cases_growth_rate),d3.max(cases_growth_rate)]);
+        return <g>
+                <TheMap map={map} data={data} collection={collection} cScale={colorScale} month={month} year = {year} countries={countries} type={"GrowthRate"} 
+                selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry}
+                selectedCountryDD={selectedCountryDD} setSelectedCountryDD={setSelectedCountryDD}/>
+                <Legend  type={"GrowthRate"}/>
+            </g>
+    }};
+
+    function CasesMap(props){
+        const{map, data, collection, month, year, type, selectedCountry, setSelectedCountry, selectedCountryDD, setSelectedCountryDD} = props;
+        const countries = data.filter(d=> d.iso_code.slice(0,4)!=="OWID").map(d=>d.location);
+        const continents = data.filter(d=> d.iso_code.slice(0,4)==="OWID").map(d=>d.location);
+        const unique_countries = countries.filter((a, b) => countries.indexOf(a) === b);
+        const unique_continents = continents.filter((a, b) => continents.indexOf(a) === b);
+        const total_cases = data.map(d=> d.total_cases_per_million);
+        const colorScale = d3.scaleSequentialSymlog().interpolator(d3.interpolateYlOrRd).domain([d3.min(total_cases),d3.max(total_cases)]);
+        return<g>
+            <TheMap map={map} data={data} collection={collection} cScale={colorScale} month={month} year = {year} countries={countries} type={"Cases"} 
+            selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry}
+            selectedCountryDD={selectedCountryDD} setSelectedCountryDD={setSelectedCountryDD}/>
+            <Legend type={"Cases"}/>
+            </g>
+    }
+
+function Dropdown (props){
+        const {options, id, selectedValue, onSelectedValueChange} = props;
+        return <div id={id}>
+            <select  defaultValue={selectedValue} 
+            onChange={event => {onSelectedValueChange(event.target.value)}}>
+            {options.map( ({value, label}) => {
+                return <option key={label} value={value} >
+                    {label}
+                </option>
+            })}
+        </select>
+        </div>
+    }
+function BigDropdown (props) {
+        const {options, id, selectedValue1, selectedValue2, onSelectedValueChange1, onSelectedValueChange2} = props;
+        const mainOptions = options.map(d=> d.continent);
+        console.log(mainOptions);// an array of continents
+        const subOptionsPairs = options.filter(d => d.continent === selectedValue1)[0].countries
+                                       .map(d=> {return {"value": d.iso_numeric, "label": d.country}});//an array of objects {iso_numeric: xxx, country: xxx}, can be directly used as value-lable pair
+        const mainOptionsPairs = mainOptions.map(d=> {return {'value': d, 'label': d}});
+        return <div id={id} transform={`translate(${LineChartoffsetX}, ${LineChartoffsetY})`}>
+             <Dropdown options={mainOptionsPairs} id={"contitent"} selectedValue={selectedValue1} onSelectedValueChange={onSelectedValueChange1}/>
+             <Dropdown options= {subOptionsPairs} id={"country"} selectedValue={selectedValue2} onSelectedValueChange={onSelectedValueChange2}/>
+           </div>
+    }
+function Maps(props){ 
+    const [selectedMonth, setSelectedMonth] = React.useState('4');
+    const [selectedYear, setSelectedYear] = React.useState('2020');
+    const [selectedCountry, setSelectedCountry] = React.useState(null);//this is the state for map
+    const [selectedContinent, setSelectedContinent] = React.useState("Asia");//
+    const [selectedCountryDD, setSelectedCountryDD] = React.useState("004");// use iso_numeric to identify country; DD is short for DropDown
+    const [selectedAttribute, setSelectedAttribute] = React.useState("Vaccinations");
+    const MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const rawData = useData(csvUrl, isoCode);
+    const { dataset1, dataset2 } = rawData
+    const map = useMap(mapUrl);
+    if (!map || !dataset1||!dataset2) {
+            return <pre>Loading...</pre>;
+        };
+        
+    const continents = dataset1.filter(d=> d.iso_code.slice(0,4)==="OWID").map(d=>d.location);//continents categorization by the first dataset
+    const continents2 = dataset2.map(d=> d.region);//continents categorization by the second dataset; we follow this typology
+    const unique_continents2 = continents2.filter((a, b) => continents2.indexOf(a) === b);
+
+    const collection = []
+    unique_continents2.map(continent=> {
+        let related_countries = dataset2.filter(d => d.region === continent)
+                                        .map(d=> {return {'iso_numeric': d["country-code"], 'country': d.name, 'continent': d.region}});//an array of object
+      
+        collection.push({"continent": continent, "countries": related_countries})
+    });
+    const countrydata = dataset1.filter(d=> d.iso_code.slice(0,4)!=="OWID")
+    const continentdata = dataset1.filter(d=> d.iso_code.slice(0,4)==="OWID")//we will use only country-specific data otherwise there will be bug
+    const changeHandler = (event) => {
+          setSelectedMonth(event.target.value);
+                }
+    const options1=[{"value":"2020","label":"2020"}, {"value":"2021","label":"2021"}];
+    const options2=[ {"value":"Vaccinations","label":"Vaccinations"}, {"value":"GrowthRate","label":"Growth Rate of New Cases"},];
+    const selectedCountryData = dataset1.filter(d=> d.iso_numeric === selectedCountryDD);
+
+    return <div>
+             <div>
+                <input key="slider" type='range' min='0' max='11' value={selectedMonth} step='1' onChange={changeHandler}/>
+                <input key="monthText" type="text" value={MONTH[selectedMonth]} readOnly/>
+                <Dropdown options={options1} id={"dropdown1"} selectedValue={selectedYear} onSelectedValueChange={setSelectedYear}/>
+                <Dropdown options={options2} id={"dropdown2"} selectedValue={selectedAttribute} onSelectedValueChange={setSelectedAttribute}/>
+                <BigDropdown options={collection} id={"dropdown3"} selectedValue1={selectedContinent} onSelectedValueChange1={setSelectedContinent}
+                selectedValue2={selectedCountryDD} onSelectedValueChange2={setSelectedCountryDD}/>
+            </div>
+            <svg width={WIDTH} height={HEIGHT}>
+                <CasesMap map={map} data={countrydata} collection = {collection} month={selectedMonth} year = {selectedYear} type={"Cases"} 
+                selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry} 
+                selectedCountryDD={selectedCountryDD} setSelectedCountryDD={setSelectedCountryDD}/>
+                <VaccinationsMap map={map} data={countrydata} collection = {collection} month={selectedMonth} year = {selectedYear} type={selectedAttribute} 
+                selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry} 
+                selectedCountryDD={selectedCountryDD} setSelectedCountryDD={setSelectedCountryDD}/>
+                <LineChart selectedCountry={selectedCountryDD} selectedCountryData={selectedCountryData}/>
+            </svg> 
+        </div>
+
+}
+
+ReactDOM.render( < Maps/>, document.getElementById('root'));
+    </script>
+    </body>
+    </html>
