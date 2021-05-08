@@ -137,6 +137,7 @@ function Y(props) {
     </g>
 }
 var pointArray = {}
+
 function X(props) {
     const { country,data, dim_array, dimensions, gap,selectedCountry, setSelectedCountry } = props;
     var one=countrydata.filter(c => c["iso_code"] ==country)
@@ -195,10 +196,17 @@ function ParallelChart(props) {
         dim_array[item] = scale;
     })
     var one=countrydata.filter(c => c["iso_numeric"] ==selectedCountry)
-    var c=one[0]["iso_code"]
+    var c=c="c"
+    if (one[0]!=undefined){
+        c=one[0]["iso_code"]
+        var dataset_for_one=data2.filter(x=>x["iso_code"]==c)
+        console.log(dataset_for_one)
+        dataset_for_one=dataset_for_one[0]
+        //var c = one[0]["iso_code"]
+    }
     //c: the iso_code of the selected country
-    var dataset_for_one=data2.filter(x=>x["iso_code"]==c)
-console.log(one)
+    //var dataset_for_one=data2.filter(x=>x["iso_code"]==c)
+
     var gap = WIDTH / dimensions.length;
     
         return <g key={"parrallelchart"}>{
@@ -220,8 +228,9 @@ console.log(one)
                 {
                     data2.filter(x=>x["iso_code"]==c).map(function(){
                         console.log("selected")
-                        return <X country={c} data={dataset_for_one} dim_array={dim_array} dimensions={dimensions} gap={gap} selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry} />
-                    })
+                        return <g key={"selectedcountry"}transform={`translate(0, 10)`}> 
+                        <X country={c} data={dataset_for_one} dim_array={dim_array} dimensions={dimensions} gap={gap} selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry} />
+                        </g>})
                 }
             </g>
  
