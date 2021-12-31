@@ -20,3 +20,43 @@ body {
     fill:rgb(150, 209, 243);
 }
 
+span.text{
+    font-size: large;
+}
+h2 {
+    color: #101A73;
+    margin-left: 40px;
+    font-size: 20pt;
+  }
+p.shadow{
+    color:#555555;
+    font-size: large;
+}
+p.stats1{
+    color:#3f3f3f;
+    font-size: large;
+}
+p.stats2{
+    color:#7c7c7c;
+    font-size: large;
+}
+p.stats3{
+    color:rgb(131, 91, 131);
+    align-self: center;
+    font-size:large
+}
+/* #ct {
+    position: absolute;
+    text-align: center;
+    width: 300px;
+    height: 100px;
+    left: left-300 px
+    top: (top-150) +'px',
+    padding: '4px',
+    font: '7px sans - serif',
+    background: '#cbcbcb',
+    border: '0px',
+    borderRadius: '8px',
+    pointerEvents: 'none',
+    opacity:"0.6"
+}; */

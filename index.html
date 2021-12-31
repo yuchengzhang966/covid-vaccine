@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Bonus</title>
+    <title>Covid data:World</title>
     <link rel="stylesheet" href="styles.css">
     <script src="http://d3js.org/d3.v6.min.js" charset="utf-8"></script>
     <script src="https://d3js.org/d3-path.v2.min.js"></script>
@@ -10,19 +10,54 @@
     <script src="https://d3js.org/topojson.v1.min.js"></script>
     <script src="https://d3js.org/d3-array.v2.min.js"></script>
     <script src="https://d3js.org/d3-geo.v2.min.js"></script>
+    <script src="https://unpkg.com/react/umd/react.production.min.js" crossorigin></script>
     <script src="https://d3js.org/d3-geo-projection.v3.min.js"></script>
     <script src="https://unpkg.com/react/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/babel-standalone/babel.js"></script>
-
-    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader&display=swap" rel="stylesheet"> 
+<link rel="preconnect" href="https://fonts.gstatic.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&display=swap" rel="stylesheet">     
+<link rel="stylesheet" href="styles.css">
 </head>
 
-<body>
-    <h1>Let's make some charts.</h1>
+<body style="padding-top:10pt">
+    <h1 style=" font-family: 'Newsreader', serif; font-size: 50px ">How the world is doing in battling COVID, <br>
+        <br /> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        ... and does Vaccine and lockdowns help?
+    </h1>
+    <div style="position:absolute; left:1150px; top:20px ; font-family: 'Newsreader';
+     border: 2px solid rgb(176, 68, 219); padding-left: 10pt; 
+     padding-top: 0pt; padding-bottom: 0pt; padding-right: 10pt; border-radius: 8px">
+        <h3>Covid data Overview: World</h3>
+        <p class="shadow"> Coronavirus Cases: <p class="stats3">🤧 158M</p></p>
+        <p class="shadow">Deaths:</p>
+        <p class="stats3"> 😵 93.7M</p>
+        <p class="shadow">Recovered:</p>
+        <p class="stats3">🥲 3.28M</p>
+        <p class="shadow">Countries with the most cases😱:</p>
+        <p class="stats3"> 1️⃣ United States: </p>
+        <p class="stats3"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;32.7M</p>
+        <p class="stats3"> 2️⃣ India: </p>
+        <p class="stats3"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;22.3M</p>
+    </div>
+    <div id="fyi"  style= "position: absolute; text-align: left; width: 350px; left: 700px; top: 200px;
+        height: 80px;
+        padding: 2px;
+        font: 12px sans-serif">
+         <p style="font-size:15px; text-align: center; font-family: Verdana"><strong>FYI:</strong> stringency index is proposed by the Blavatnik School of Government, Oxford University;
+            it is a "composite measure based on nine response
+           indicators including school closures, workplace closures, and travel bans,
+           rescaled to a value from 0 to 100 (100 = strictest)."<em>("Our World in Data")</em></p>
+        <!-- <svg>
+            <rect x="-100" y="-160" width='350px' height='90px' fill="none" stroke="black"/>
+        </svg> -->
+       
+    </div>
 
-    <div id="root"></div>
-    
+    <div style="position:relative; left:80px; top:2px " id="root"></div>
+
     <script type="text/babel" src="main.js"></script>
 </body>
 
