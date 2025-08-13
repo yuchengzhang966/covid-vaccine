@@ -1,9 +1,9 @@
 // import {csvUrl, mapUrl,useData,useMap,SymbolMap,Tooltip,SymmetricAreaChart,SymmetricBarChart} from './modules/functions.js';
 //import Button from 'react-bootstrap/Button';
 
-const csv1 = "https://raw.githubusercontent.com/jane-yucheng/covid-vaccine/main/dataset/covid1.csv";
-const csv2 = "https://raw.githubusercontent.com/jane-yucheng/covid-vaccine/main/dataset/covid2.csv";
-const csv3 = "https://raw.githubusercontent.com/jane-yucheng/covid-vaccine/main/dataset/covid3.csv";
+const csv1 = "./src/data/covid1.csv";
+const csv2 = "./src/data/covid2.csv";
+const csv3 = "./src/data/covid3.csv";
 //const mapUrl = "https://gist.githubusercontent.com/hogwild/6784f0d85e8837b9926c184c65ca8ed0/raw/2040d6883cf822817e34b5bda885348ec6214572/jerseyCity_geojson.json";
 // const csvUrl = "https://raw.githubusercontent.com/jane-yucheng/covid-vaccine/main/dataset/covid1.csv";
 // const mapUrl = "https://unpkg.com/world-atlas@2.0.2/countries-110m.json";
@@ -345,71 +345,6 @@ function ParallelChart(props) {
                 </g>
             })
         }
-        
-        {/* Country Name Labels on the Right Side */}
-        {data2.map(function (d, index) {
-            // Get the last point position for each country
-            var lastDim = display_dimensions[display_dimensions.length - 1];
-            var lastIndex = display_dimensions.length - 1;
-            var xPos = gap * lastIndex;
-            
-            // Calculate y position based on the last dimension value
-            var yPos;
-            if (lastDim == "stringency_index" || lastDim == "death_rate" || lastDim == "total_cases_per_million") {
-                var one = countrydata.filter(c => c["iso_code"] == d["iso_code"]);
-                if (lastDim == "stringency_index") {
-                    var total_stringency = 0;
-                    one.forEach(function (time, idx) {
-                        total_stringency += time["stringency_index"];
-                    });
-                    var stringency = total_stringency / one.length;
-                    yPos = dim_array[lastDim](stringency);
-                } else if (lastDim == "death_rate") {
-                    var total_death = one[one.length - 1]["total_deaths_per_million"];
-                    var total_cases = one[one.length - 1]["total_cases_per_million"];
-                    var death_rate = 0;
-                    if (total_cases != 0 && total_death != 0) {
-                        death_rate = total_death / total_cases;
-                    }
-                    yPos = dim_array[lastDim](death_rate);
-                } else if (lastDim == "total_cases_per_million") {
-                    var total_cases = one[one.length - 1]["total_cases_per_million"];
-                    yPos = dim_array[lastDim](total_cases);
-                }
-            } else {
-                yPos = dim_array[lastDim](d[lastDim]);
-            }
-            
-            // Determine text color based on selection
-            var textColor = "#666666";
-            var fontWeight = "normal";
-            if (d["iso_code"] == c) {
-                textColor = "#BD3D22";
-                fontWeight = "bold";
-            } else if (d["iso_code"] == dd) {
-                textColor = "purple";
-                fontWeight = "bold";
-            }
-            
-            return <g key={'label' + index} transform={`translate(0, 10)`}>
-                <text 
-                    x={xPos + 20} 
-                    y={yPos} 
-                    style={{
-                        fontSize: '12px',
-                        fontFamily: 'var(--font-family)',
-                        fill: textColor,
-                        fontWeight: fontWeight,
-                        textAnchor: 'start',
-                        alignmentBaseline: 'middle'
-                    }}
-                    onMouseOver={() => { setSelectedCountry(d["iso_numeric"]) }}
-                    onMouseOut={() => { setSelectedCountry(null) }}
-                >
-                    {d["name"]}
-                </text>
-            </g>
-        })}
    
     </g>
 
@@ -1295,7 +1230,12 @@ const COVID = () => {
             {/* Map Controls */}
             <div className="map-controls">
                 <div style={{display: 'flex', alignItems: 'center', gap: '12px', minWidth: '200px'}}>
-                    <label className="control-label">Month:</label>
+                    <label style={{
+                        fontSize: '14px', 
+                        fontWeight: '600', 
+                        color: 'var(--text-primary)',
+                        whiteSpace: 'nowrap'
+                    }}>Month:</label>
                     <input 
                         key="slider" 
                         type='range' 
@@ -1325,7 +1265,12 @@ const COVID = () => {
             {/* Geographic Controls */}
             <div className="map-controls" style={{marginTop: '16px'}}>
                 <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                    <label className="control-label">Location:</label>
+                    <label style={{
+                        fontSize: '14px', 
+                        fontWeight: '600', 
+                        color: 'var(--text-primary)',
+                        whiteSpace: 'nowrap'
+                    }}>Location:</label>
                 </div>
                 <BigDropdown dataset2={dataset3} collection={collection} id={"big-dropdown"} selectedValue1={selectedContinent} onSelectedValueChange1={setSelectedContinent}
                     selectedValue2={selectedSubRegion} onSelectedValueChange2={setSelectedSubRegion}

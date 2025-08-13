@@ -62,7 +62,8 @@ body {
 
 /* Stats Card */
 .stats-card {
-  position: absolute;
+
+  display: hidden;
   right: 32px;
   top: 32px;
   background: var(--card-background);
