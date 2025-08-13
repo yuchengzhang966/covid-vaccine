@@ -4,13 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="COVID-19 Global Dashboard - Interactive data visualization of pandemic statistics worldwide">
+    <meta name="theme-color" content="#007AFF">
     <title>COVID-19 Global Dashboard</title>
-    <meta name="description" content="Interactive COVID-19 data visualization showing worldwide statistics, vaccination rates, and stringency indices">
-    
-    <!-- Modern CSS -->
     <link rel="stylesheet" href="styles.css">
-    
-    <!-- External Libraries -->
     <script src="https://d3js.org/d3.v6.min.js" charset="utf-8"></script>
     <script src="https://d3js.org/d3-path.v2.min.js"></script>
     <script src="https://d3js.org/d3-shape.v2.min.js"></script>
@@ -21,23 +18,21 @@
     <script src="https://d3js.org/d3-geo-projection.v3.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/babel-standalone/babel.js"></script>
-    
-    <!-- Apple System Fonts -->
     <link rel="preconnect" href="https://fonts.gstatic.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader&display=swap" rel="stylesheet"> 
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&display=swap" rel="stylesheet">     
 </head>
 
 <body>
-    <!-- Header Section -->
-    <header class="card" style="margin: 0 0 24px 0; border-radius: 0 0 12px 12px;">
-        <h1>COVID-19 Global Dashboard from Jan 2020 to April 2021</h1>
-        <p style="text-align: center; margin: 0; font-size: 18px; color: var(--text-secondary);">
-            Understanding the pandemic through data visualization
-        </p>
+    <!-- Modern Header -->
+    <header class="header">
+        <h1>COVID-19 Global Dashboard</h1>
+        <p class="subtitle">Understanding the pandemic through data visualization</p>
     </header>
 
     <!-- Stats Overview Card -->
-    <div class="stats-overview">
+    <div class="stats-card">
         <h3>Global Overview</h3>
         <div class="stat-item">
             <span class="stat-label">Total Cases</span>
@@ -59,26 +54,15 @@
 
     <!-- Info Box -->
     <div class="info-box">
-        <p>
-            <strong>About Stringency Index:</strong> This composite measure, developed by the Blavatnik School of Government at Oxford University, 
-            tracks government responses to COVID-19. It combines nine indicators including school closures, workplace restrictions, and travel bans, 
-            scaled from 0 to 100 (100 = strictest measures).
-        </p>
+        <p><strong>Stringency Index:</strong> A composite measure based on nine response indicators including school closures, workplace closures, and travel bans, rescaled to a value from 0 to 100 (100 = strictest). <em>— Our World in Data</em></p>
     </div>
 
-    <!-- Main Content Container -->
-    <main style="max-width: 1400px; margin: 0 auto; padding: 0 24px;">
+    <!-- Main Content Area -->
+    <main style="padding: 0 32px;">
         <!-- React App Container -->
         <div id="root"></div>
     </main>
 
-    <!-- Footer -->
-    <footer style="text-align: center; padding: 48px 24px; color: var(--text-secondary); font-size: 14px;">
-        <p>Data sources: Our World in Data, Oxford University, Natural Earth</p>
-        <p>Built with D3.js and React</p>
-    </footer>
-
-    <!-- React App Script -->
     <script type="text/babel" src="main.js"></script>
 </body>
 

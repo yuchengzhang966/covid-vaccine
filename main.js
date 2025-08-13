@@ -2,7 +2,8 @@
 //import Button from 'react-bootstrap/Button';
 
 const csv1 = "https://raw.githubusercontent.com/jane-yucheng/covid-vaccine/main/dataset/covid1.csv";
-const csv2 = "https://raw.githubusercontent.com/jane-yucheng/covid-vaccine/main/dataset/covid2.csv"
+const csv2 = "https://raw.githubusercontent.com/jane-yucheng/covid-vaccine/main/dataset/covid2.csv";
+const csv3 = "https://raw.githubusercontent.com/jane-yucheng/covid-vaccine/main/dataset/covid3.csv";
 //const mapUrl = "https://gist.githubusercontent.com/hogwild/6784f0d85e8837b9926c184c65ca8ed0/raw/2040d6883cf822817e34b5bda885348ec6214572/jerseyCity_geojson.json";
 // const csvUrl = "https://raw.githubusercontent.com/jane-yucheng/covid-vaccine/main/dataset/covid1.csv";
 // const mapUrl = "https://unpkg.com/world-atlas@2.0.2/countries-110m.json";
@@ -39,35 +40,62 @@ function useMap(jsonPath) {
 function useData(csvPath1, csvPath2, csvPath3) {
     const [dataAll, setData] = React.useState([]);
     React.useEffect(() => {
-        Promise.all([d3.csv(csvPath1), d3.csv(csvPath2), d3.csv(csvPath3)]).then(datasets => {
+        console.log('Loading data from:', csvPath1, csvPath2, csvPath3);
+        Promise.all([d3.csv(csvPath1), d3.csv(csvPath2), d3.csv(csvPath3)])
+            .then(datasets => {
+                console.log('Data loaded successfully:', datasets.length, 'datasets');
+                console.log('Dataset 1 length:', datasets[0] ? datasets[0].length : 0);
+                console.log('Dataset 2 length:', datasets[1] ? datasets[1].length : 0);
+                console.log('Dataset 3 length:', datasets[2] ? datasets[2].length : 0);
+            console.log('Processing dataset 1...');
             datasets[0].forEach(d => {
-                d.total_cases_per_million = + d.total_cases_per_million;
-                d.total_vaccinations_per_hundred = + d.total_vaccinations_per_hundred;
-                d.new_cases_per_million = + d.new_cases_per_million;
-                d.stringency_index = + d.stringency_index;
-                d.cases_growth_rate = d.new_cases_per_million / d.total_cases_per_million;
-                d.time = new Date(d.month + '/1/' + d.year);
-                const match = datasets[2].filter(entry => entry['alpha-3'] === d.iso_code);
-                if (match[0]) {
-                    d.iso_numeric = match[0]['country-code'];
+                try {
+                    d.total_cases_per_million = +d.total_cases_per_million || 0;
+                    d.total_vaccinations_per_hundred = +d.total_vaccinations_per_hundred || 0;
+                    d.new_cases_per_million = +d.new_cases_per_million || 0;
+                    d.stringency_index = +d.stringency_index || 0;
+                    d.cases_growth_rate = d.total_cases_per_million > 0 ? d.new_cases_per_million / d.total_cases_per_million : 0;
+                    d.time = new Date(d.month + '/1/' + d.year);
+                    
+                    if (datasets[2] && datasets[2].length > 0) {
+                        const match = datasets[2].filter(entry => entry['alpha-3'] === d.iso_code);
+                        if (match[0]) {
+                            d.iso_numeric = match[0]['country-code'];
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error processing row:', d, error);
                 }
-
             });
-            const filtered = datasets[0].filter(d=>d.month!==1 && d.year!==2020);
+            console.log('Filtering dataset 1...');
+            const filtered = datasets[0].filter(d => !(d.month == 1 && d.year == 2020));
+            console.log('Filtered dataset 1 length:', filtered.length);
+            
+            console.log('Processing dataset 2...');
             datasets[1].forEach(d => {
-                d.population_density = + d.population_density;
-                d.median_age = + d.median_age;
-                d.aged_65_older = + d.aged_65_older;
-                d.gdp_per_capita = + d.gdp_per_capita;
-                d.extreme_poverty = + d.extreme_poverty;
-                d.cardiovasc_death_rate = + d.cardiovasc_death_rate;
-                d.female_smokers = + d.female_smokers;
-                d.handwashing_facilities = + d.handwashing_facilities;
-                d.male_smokers = + d.male_smokers;
-
+                try {
+                    d.population_density = +d.population_density || 0;
+                    d.median_age = +d.median_age || 0;
+                    d.aged_65_older = +d.aged_65_older || 0;
+                    d.gdp_per_capita = +d.gdp_per_capita || 0;
+                    d.extreme_poverty = +d.extreme_poverty || 0;
+                    d.cardiovasc_death_rate = +d.cardiovasc_death_rate || 0;
+                    d.female_smokers = +d.female_smokers || 0;
+                    d.handwashing_facilities = +d.handwashing_facilities || 0;
+                    d.male_smokers = +d.male_smokers || 0;
+                } catch (error) {
+                    console.error('Error processing dataset 2 row:', d, error);
+                }
             });
 
+            console.log('Setting data state...');
+            console.log('Final filtered dataset 1 length:', filtered.length);
+            console.log('Final dataset 2 length:', datasets[1].length);
+            console.log('Final dataset 3 length:', datasets[2].length);
             setData({ dataset1: filtered, dataset2: datasets[1], dataset3: datasets[2]});
+        })
+        .catch(error => {
+            console.error('Error loading data:', error);
         });
     }, []);
     return dataAll;
@@ -317,6 +345,71 @@ function ParallelChart(props) {
                 </g>
             })
         }
+        
+        {/* Country Name Labels on the Right Side */}
+        {data2.map(function (d, index) {
+            // Get the last point position for each country
+            var lastDim = display_dimensions[display_dimensions.length - 1];
+            var lastIndex = display_dimensions.length - 1;
+            var xPos = gap * lastIndex;
+            
+            // Calculate y position based on the last dimension value
+            var yPos;
+            if (lastDim == "stringency_index" || lastDim == "death_rate" || lastDim == "total_cases_per_million") {
+                var one = countrydata.filter(c => c["iso_code"] == d["iso_code"]);
+                if (lastDim == "stringency_index") {
+                    var total_stringency = 0;
+                    one.forEach(function (time, idx) {
+                        total_stringency += time["stringency_index"];
+                    });
+                    var stringency = total_stringency / one.length;
+                    yPos = dim_array[lastDim](stringency);
+                } else if (lastDim == "death_rate") {
+                    var total_death = one[one.length - 1]["total_deaths_per_million"];
+                    var total_cases = one[one.length - 1]["total_cases_per_million"];
+                    var death_rate = 0;
+                    if (total_cases != 0 && total_death != 0) {
+                        death_rate = total_death / total_cases;
+                    }
+                    yPos = dim_array[lastDim](death_rate);
+                } else if (lastDim == "total_cases_per_million") {
+                    var total_cases = one[one.length - 1]["total_cases_per_million"];
+                    yPos = dim_array[lastDim](total_cases);
+                }
+            } else {
+                yPos = dim_array[lastDim](d[lastDim]);
+            }
+            
+            // Determine text color based on selection
+            var textColor = "#666666";
+            var fontWeight = "normal";
+            if (d["iso_code"] == c) {
+                textColor = "#BD3D22";
+                fontWeight = "bold";
+            } else if (d["iso_code"] == dd) {
+                textColor = "purple";
+                fontWeight = "bold";
+            }
+            
+            return <g key={'label' + index} transform={`translate(0, 10)`}>
+                <text 
+                    x={xPos + 20} 
+                    y={yPos} 
+                    style={{
+                        fontSize: '12px',
+                        fontFamily: 'var(--font-family)',
+                        fill: textColor,
+                        fontWeight: fontWeight,
+                        textAnchor: 'start',
+                        alignmentBaseline: 'middle'
+                    }}
+                    onMouseOver={() => { setSelectedCountry(d["iso_numeric"]) }}
+                    onMouseOut={() => { setSelectedCountry(null) }}
+                >
+                    {d["name"]}
+                </text>
+            </g>
+        })}
    
     </g>
 
@@ -933,10 +1026,10 @@ function CasesMap(props) {
 function Dropdown(props) {
     const { options, id, selectedValue, onSelectedValueChange } = props;
     return <div id={id}>
-        <select defaultValue={selectedValue} style={{fontSize:'15px'}}
+        <select defaultValue={selectedValue}
             onChange={event => { onSelectedValueChange(event.target.value) }}>
             {options.map(({ value, label }) => {
-                return <option key={label} value={value} >
+                return <option key={label} value={value}>
                     {label}
                 </option>
             })}
@@ -946,11 +1039,17 @@ function Dropdown(props) {
 function ContinentDropdown(props) {
     const { collection, id, selectedContinent, onSelectedContinentChange, selectedRegionOptions, onSelectedRegionOptionsChange,
         selectedCountryOptions, onSelectedCountryOptionsChange,onSelectedCountryChange} = props;
+    
+    // Safety check for collection
+    if (!collection || collection.length === 0) {
+        return <div>Loading continent options...</div>;
+    }
+    
     const continents = collection.map(d => d.continent);
     const continents_uq = continents.filter((a, b) => continents.indexOf(a) === b);
     const valueLabelPairs_continent = continents_uq.map(d => { return { 'value': d, 'label': d } });
     return <div id={id}>
-        <select defaultValue={selectedContinent} style={{fontSize:'15px'}}
+        <select defaultValue={selectedContinent}
             onChange={event => {
                 onSelectedContinentChange(event.target.value);
                 const subRegions = collection.filter(d => d.continent === event.target.value).map(d => d['sub-region']);
@@ -965,7 +1064,7 @@ function ContinentDropdown(props) {
 
             }}>
             {valueLabelPairs_continent.map(({ value, label }) => {
-                return <option key={label} value={value} style={{fontSize:'15px'}}>
+                return <option key={label} value={value}>
                     {label}
                 </option>
             })}
@@ -977,12 +1076,18 @@ function RegionDropdown(props){
     const {collection, id, selectedRegion, onSelectedRegionChange, selectedRegionOptions,
         selectedCountryOptions, onSelectedCountryOptionsChange,
         selectedCountry, onSelectedCountryChange} = props;
+    
+    // Safety check for selectedRegionOptions
+    if (!selectedRegionOptions || selectedRegionOptions.length === 0) {
+        return <div>Loading region options...</div>;
+    }
+    
     const valueLabelPairs_subRegion = selectedRegionOptions.map(d=> {return {"value": d, "label": d}});
     // console.log('hihihi');
     // console.log( selectedCountryOptions);
     // console.log(collection);
     return <div id={id}>
-            <select  defaultValue={selectedRegion} style={{fontSize:'15px'}}
+            <select defaultValue={selectedRegion}
             onChange={ event => {onSelectedRegionChange(event.target.value);
                 const countries = collection.filter(d => d['sub-region'] === event.target.value);
                 // console.log(countries);
@@ -998,7 +1103,7 @@ function RegionDropdown(props){
                 onSelectedCountryChange(defaultCountry['countries'][0]['iso_numeric']);
             }}>
             {valueLabelPairs_subRegion.map(({value, label}) => {
-            return <option key={label} value={value} style={{fontSize:'15px'}} >
+            return <option key={label} value={value}>
                     {label}
                 </option>
             })}
@@ -1013,9 +1118,19 @@ function CountryDropdown(props) {
     // console.log(countryOptions);   
     // console.log('hihihi');
 
+    // Safety check for dataset2
+    if (!dataset2 || !selectedCountryOptions) {
+        return <div>Loading country options...</div>;
+    }
+
     const valueLabelPairs_country = selectedCountryOptions.map(d => {
         const match = dataset2.filter(entry => entry.name === d)[0];
-        return { "value": match['country-code'], "label": match['name'] }
+        if (match) {
+            return { "value": match['country-code'], "label": match['name'] }
+        } else {
+            console.warn('No match found for country:', d);
+            return { "value": "", "label": d }
+        }
     });
     return <div>
         <Dropdown options={valueLabelPairs_country} id={"country"} selectedValue={selectedCountry} onSelectedValueChange={onSelectedCountryChange} />
@@ -1027,28 +1142,37 @@ function BigDropdown(props) {
         onSelectedValueChange2, selectedValue3, onSelectedValueChange3,
         selectedRegionOptions, onSelectedRegionOptionsChange,
         selectedCountryOptions, onSelectedCountryOptionsChange } = props;
-    const divStyle = {
-        position: "absolute",
-        left: `${LineChartoffsetX}px`,
-        top: `${LineChartoffsetY-20}px`
-    };
-    return <div id={id} style={divStyle}>
-        <ContinentDropdown collection={collection} id={"contitent"} selectedContinent={selectedValue1} onSelectedContinentChange={onSelectedValueChange1}
-            selectedRegionOptions={selectedRegionOptions} onSelectedRegionOptionsChange={onSelectedRegionOptionsChange}
-            selectedCountryOptions={selectedCountryOptions} onSelectedCountryOptionsChange={onSelectedCountryOptionsChange}
-            onSelectedCountryChange={onSelectedValueChange3}/>
-        <RegionDropdown collection={collection}  id={"sub-region"} selectedRegion={selectedValue2} onSelectedRegionChange={onSelectedValueChange2} 
-            selectedRegionOptions={selectedRegionOptions}
-            
-            selectedCountryOptions={selectedCountryOptions} onSelectedCountryOptionsChange={onSelectedCountryOptionsChange}
-            
-            selectedCountry={selectedValue3} onSelectedCountryChange={onSelectedValueChange3}/>
-        <CountryDropdown dataset2={dataset2} collection={collection} id={"country"} selectedRegion={selectedValue2}
-            selectedCountry={selectedValue3} onSelectedCountryChange={onSelectedValueChange3}
-            selectedCountryOptions={selectedCountryOptions} onSelectedCountryOptionsChange={onSelectedCountryOptionsChange} />
+    
+    return <div id={id} style={{display: 'flex', gap: '16px', flexWrap: 'wrap'}}>
+        <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+            <label style={{fontSize: '14px', fontWeight: '500', color: 'var(--text-secondary)'}}>Continent</label>
+            <ContinentDropdown collection={collection} id={"continent"} selectedContinent={selectedValue1} onSelectedContinentChange={onSelectedValueChange1}
+                selectedRegionOptions={selectedRegionOptions} onSelectedRegionOptionsChange={onSelectedRegionOptionsChange}
+                selectedCountryOptions={selectedCountryOptions} onSelectedCountryOptionsChange={onSelectedCountryOptionsChange}
+                onSelectedCountryChange={onSelectedValueChange3}/>
+        </div>
+        <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+            <label style={{fontSize: '14px', fontWeight: '500', color: 'var(--text-secondary)'}}>Region</label>
+            <RegionDropdown collection={collection} id={"sub-region"} selectedRegion={selectedValue2} onSelectedRegionChange={onSelectedValueChange2} 
+                selectedRegionOptions={selectedRegionOptions}
+                selectedCountryOptions={selectedCountryOptions} onSelectedCountryOptionsChange={onSelectedCountryOptionsChange}
+                selectedCountry={selectedValue3} onSelectedCountryChange={onSelectedValueChange3}/>
+        </div>
+        <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+            <label style={{fontSize: '14px', fontWeight: '500', color: 'var(--text-secondary)'}}>Country</label>
+            <CountryDropdown dataset2={dataset2} collection={collection} id={"country"} selectedRegion={selectedValue2}
+                selectedCountry={selectedValue3} onSelectedCountryChange={onSelectedValueChange3}
+                selectedCountryOptions={selectedCountryOptions} onSelectedCountryOptionsChange={onSelectedCountryOptionsChange} />
+        </div>
     </div>
 }
 const COVID = () => {
+
+    // Define dimensions here to avoid reference errors
+    const dimensions = ['population_density', 'median_age', 'gdp_per_capita',
+        'male_smokers', "female_smokers", 'handwashing_facilities', 'diabetes_prevalence', 'cardiovasc_death_rate'
+        , 'hospital_beds_per_thousand', "stringency_index", "death_rate", "total_cases_per_million"];
+    const display_dimensions = [dimensions[0], dimensions[dimensions.length - 1], dimensions[1], dimensions[dimensions.length - 2], dimensions[2], dimensions[dimensions.length - 3]];
 
     //set up the states
     const [selectedMonth, setSelectedMonth] = React.useState('4');
@@ -1071,19 +1195,50 @@ const COVID = () => {
     var [left, setLeft] = React.useState(0);
     var [top, setTop] = React.useState(0);
     var [t, sett] = React.useState(null);
-    display_dimensions = [axis0, axis1, axis2, axis3, axis4, axis5]
+    // Update display_dimensions with current axis values
+    const currentDisplayDimensions = [axis0, axis1, axis2, axis3, axis4, axis5];
     setAxisArray = [setAxis0, setAxis1, setAxis2, setAxis3, setAxis4, setAxis5]
 
 
     //Use the data
     const rawData = useData(csv1, csv2, isoCode);
-    const { dataset1, dataset2, dataset3} = rawData
+    const rawDataObj = rawData || {};
+    const dataset1 = rawDataObj.dataset1;
+    const dataset2 = rawDataObj.dataset2;
+    const dataset3 = rawDataObj.dataset3;
     const map = useMap(mapUrl);
     const MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     // data2 = useData2(csv2);
-    if (!map || !dataset1 || !dataset2 || !dataset3) {
-        return <pre>Loading...</pre>;
-    }; 
+    
+    console.log('Component render - rawData:', rawData);
+    console.log('Component render - dataset1 length:', dataset1 ? dataset1.length : 0);
+    console.log('Component render - dataset2 length:', dataset2 ? dataset2.length : 0);
+    console.log('Component render - dataset3 length:', dataset3 ? dataset3.length : 0);
+    console.log('Component render - map:', map);
+    
+    // Add more detailed debugging
+    if (!map) {
+        return <div className="loading">Loading map data...</div>;
+    }
+    
+    if (!dataset1 || dataset1.length === 0) {
+        return <div className="loading">Loading COVID-19 data... ({dataset1 ? dataset1.length : 0} records)</div>;
+    }
+    
+    if (!dataset2 || dataset2.length === 0) {
+        return <div className="loading">Loading demographic data... ({dataset2 ? dataset2.length : 0} records)</div>;
+    }
+    
+    if (!dataset3 || dataset3.length === 0) {
+        return <div className="loading">Loading country codes... ({dataset3 ? dataset3.length : 0} records)</div>;
+    }
+    
+    console.log('All data loaded successfully!'); 
+
+    // Safety check for collection processing
+    if (!dataset3 || dataset3.length === 0) {
+        return <div className="loading">Processing geographic data...</div>;
+    }
 
     const continents = dataset1.filter(d => d.iso_code.slice(0, 4) === "OWID").map(d => d.location);//continents categorization by the first dataset
     const continents2 = dataset3.map(d => d.region);//continents categorization by the second dataset; we follow this typology
@@ -1115,6 +1270,11 @@ const COVID = () => {
         }
     });
 
+    // Safety check for collection
+    if (!collection || collection.length === 0) {
+        return <div className="loading">Preparing visualization data...</div>;
+    }
+
     countrydata = dataset1.filter(d => d.iso_code.slice(0, 4) !== "OWID")
     const continentdata = dataset1.filter(d => d.iso_code.slice(0, 4) === "OWID")//we will use only country-specific data otherwise there will be bug
     // console.log(continentdata);
@@ -1128,59 +1288,100 @@ const COVID = () => {
     const selectedCountryDDData = dataset1.filter(d=> d.iso_numeric === selectedCountryDD);
     return <div>
 
-        <div>
-            <input key="slider" type='range' min='1' max='12' value={selectedMonth} step='1' onChange={changeHandler} />
-            <input key="monthText" type="text" value={MONTH[selectedMonth-1]} readOnly />
-            <Dropdown options={options1} id={"dropdown1"} selectedValue={selectedYear} onSelectedValueChange={setSelectedYear} />
-            <Dropdown options={options2} id={"dropdown2"} selectedValue={selectedAttribute} onSelectedValueChange={setSelectedAttribute} />
-            <div transform={`translate(${LineChartoffsetX}, ${LineChartoffsetY})`}>
+
+
+        {/* Main Visualization */}
+        <div className="visualization-container">
+            {/* Map Controls */}
+            <div className="map-controls">
+                <div style={{display: 'flex', alignItems: 'center', gap: '12px', minWidth: '200px'}}>
+                    <label className="control-label">Month:</label>
+                    <input 
+                        key="slider" 
+                        type='range' 
+                        min='1' 
+                        max='12' 
+                        value={selectedMonth} 
+                        step='1' 
+                        onChange={changeHandler} 
+                        style={{flex: 1, minWidth: '120px'}} 
+                    />
+                    <input 
+                        key="monthText" 
+                        type="text" 
+                        value={MONTH[selectedMonth-1]} 
+                        readOnly 
+                        className="month-display" 
+                        style={{minWidth: '60px', textAlign: 'center'}}
+                    />
+                </div>
+                
+                <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
+                    <Dropdown options={options1} id={"dropdown1"} selectedValue={selectedYear} onSelectedValueChange={setSelectedYear} />
+                    <Dropdown options={options2} id={"dropdown2"} selectedValue={selectedAttribute} onSelectedValueChange={setSelectedAttribute} />
+                </div>
+            </div>
+
+            {/* Geographic Controls */}
+            <div className="map-controls" style={{marginTop: '16px'}}>
+                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                    <label className="control-label">Location:</label>
+                </div>
                 <BigDropdown dataset2={dataset3} collection={collection} id={"big-dropdown"} selectedValue1={selectedContinent} onSelectedValueChange1={setSelectedContinent}
                     selectedValue2={selectedSubRegion} onSelectedValueChange2={setSelectedSubRegion}
                     selectedValue3={selectedCountryDD} onSelectedValueChange3={setSelectedCountryDD}
                     selectedRegionOptions={selectedRegionOptions} onSelectedRegionOptionsChange={setSelectedRegionOptions}
                     selectedCountryOptions={selectedCountryOptions} onSelectedCountryOptionsChange={setSelectedCountryOptions} />
             </div>
+            
+            <svg width={WIDTH} height={HEIGHT}>
+                <CasesMap map={map} data={countrydata} collection={collection} month={selectedMonth} year={selectedYear} type={"Cases"}
+                    selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry}
+                    selectedCountryDD={selectedCountryDD} setSelectedCountryDD={setSelectedCountryDD} 
+                    setLeft={setLeft} setTop={setTop} t={t} sett={sett}/>
+                <VaccinationsMap map={map} data={countrydata} collection={collection} month={selectedMonth} year={selectedYear} type={selectedAttribute}
+                    selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry}
+                    selectedCountryDD={selectedCountryDD} setSelectedCountryDD={setSelectedCountryDD} 
+                    setLeft={setLeft} setTop={setTop} t={t} sett={sett}/>
+                <LineChart selectedCountry={selectedCountry} selectedCountryDD={selectedCountryDD} 
+                    selectedCountryData={selectedCountryData} selectedCountryDDData={selectedCountryDDData}/>
+                <g transform={`translate(0, ${margin1.top})`}>
+                    <Tooltip selectedCountry={selectedCountry} data2={dataset2}
+                        dataset1={dataset1} />
+                </g>
+            </svg>
         </div>
-
-        <svg width={WIDTH} height={HEIGHT}>
-            <CasesMap map={map} data={countrydata} collection={collection} month={selectedMonth} year={selectedYear} type={"Cases"}
-                selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry}
-                selectedCountryDD={selectedCountryDD} setSelectedCountryDD={setSelectedCountryDD} 
-                setLeft={setLeft} setTop={setTop} t={t} sett={sett}/>
-            <VaccinationsMap map={map} data={countrydata} collection={collection} month={selectedMonth} year={selectedYear} type={selectedAttribute}
-                selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry}
-                selectedCountryDD={selectedCountryDD} setSelectedCountryDD={setSelectedCountryDD} 
-                setLeft={setLeft} setTop={setTop} t={t} sett={sett}/>
-            <LineChart selectedCountry={selectedCountry} selectedCountryDD={selectedCountryDD} 
-                selectedCountryData={selectedCountryData} selectedCountryDDData={selectedCountryDDData}/>
-            <g transform={`translate(0, ${margin1.top})`}>
-                <Tooltip selectedCountry={selectedCountry} data2={dataset2}
-                    dataset1={dataset1} />
-            </g>
-
-        </svg>
          <Tooltip1 left={left} top={top} selectedCountry={selectedCountry} selectedMonth={selectedMonth} 
         selectedYear={selectedYear} selectedAttribute={selectedAttribute} dataset1={dataset1} t={t}/> 
-        {/* <div style={{left: '500px', top: "20px", width: '100px', height: "50px"}}>
-        <p> {"Share of the population with basic handwashing facilities on premises, most recent year available"}</p>
-        </div> */}
-        <h2 style={{ "fontFamily": "Caveat, cursive", "color": "black " }}> 🤔 What factors may impact the spread of Covid?</h2>
-        <h2 style={{ "fontFamily": "Caveat, cursive", "color": "black" }}> 😎 Change the axis by selecting the dropdown!</h2>
-        <p stryle={{fontSize: "50px"}}> <strong>{"FYI: "}</strong>{' "hand-washing facilities" is defined as the "share of the population with basic handwashing facilities on premises, most recent year available."(OWID)'}</p>
-        <P_dropdown data2={dataset2} selectedCountry={selectedCountry}
-            setSelectedCountry={setSelectedCountry}
-            selectedCountryDD={selectedCountryDD} />
+        
+        {/* Analysis Section */}
+        <div className="card">
+            <h2>What factors impact COVID-19 spread?</h2>
+            <p style={{marginBottom: '24px'}}>
+                Explore the relationship between various demographic and health factors and COVID-19 outcomes. 
+                Use the dropdown below to change the axis variables and discover correlations.
+            </p>
+            <p style={{fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '24px'}}>
+                <strong>Note:</strong> "Hand-washing facilities" refers to the share of the population with basic handwashing facilities on premises, 
+                most recent year available (Our World in Data).
+            </p>
+            
+            <P_dropdown data2={dataset2} selectedCountry={selectedCountry}
+                setSelectedCountry={setSelectedCountry}
+                selectedCountryDD={selectedCountryDD} />
+        </div>
       
-        <svg width={pwidth + margin1.left + margin1.right} height={pheight + margin1.top + margin1.bottom}>
-       
-            <g transform={`translate(${margin1.left}, ${margin1.top})`}>
-           
-                <ParallelChart data2={dataset2} selectedCountry={selectedCountry}
-                    setSelectedCountry={setSelectedCountry}
-                    selectedCountryDD={selectedCountryDD} />
-            </g>
-
-        </svg>
+        {/* Parallel Coordinates Chart */}
+        <div className="visualization-container">
+            <h3 style={{marginBottom: '16px'}}>Parallel Coordinates Analysis</h3>
+            <svg width={pwidth + margin1.left + margin1.right} height={pheight + margin1.top + margin1.bottom}>
+                <g transform={`translate(${margin1.left}, ${margin1.top})`}>
+                    <ParallelChart data2={dataset2} selectedCountry={selectedCountry}
+                        setSelectedCountry={setSelectedCountry}
+                        selectedCountryDD={selectedCountryDD} />
+                </g>
+            </svg>
+        </div>
     </div>
 
 }
