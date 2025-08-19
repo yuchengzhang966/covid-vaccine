@@ -5,6 +5,18 @@
     {
       "src": "index.html",
       "use": "@vercel/static"
+    },
+    {
+      "src": "styles.css",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "main.js",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "src/data/*",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
@@ -13,27 +25,16 @@
       "dest": "/index.html"
     },
     {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
-  ],
-  "headers": [
+      "src": "/styles.css",
+      "dest": "/styles.css"
+    },
     {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
-        }
-      ]
+      "src": "/main.js",
+      "dest": "/main.js"
+    },
+    {
+      "src": "/src/data/(.*)",
+      "dest": "/src/data/$1"
     }
   ]
 }
