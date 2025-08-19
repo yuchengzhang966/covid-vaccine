@@ -1227,7 +1227,7 @@ const COVID = () => {
 
         {/* Main Visualization */}
         <div className="visualization-container">
-            {/* Map Controls */}
+            {/* Combined Controls */}
             <div className="map-controls">
                 <div style={{display: 'flex', alignItems: 'center', gap: '12px', minWidth: '200px'}}>
                     <label style={{
@@ -1260,10 +1260,7 @@ const COVID = () => {
                     <Dropdown options={options1} id={"dropdown1"} selectedValue={selectedYear} onSelectedValueChange={setSelectedYear} />
                     <Dropdown options={options2} id={"dropdown2"} selectedValue={selectedAttribute} onSelectedValueChange={setSelectedAttribute} />
                 </div>
-            </div>
 
-            {/* Geographic Controls */}
-            <div className="map-controls" style={{marginTop: '16px'}}>
                 <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                     <label style={{
                         fontSize: '14px', 
